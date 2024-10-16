@@ -366,6 +366,15 @@ void MonoServer::createDefaultDatabase()
         u8R"###(     primary key (fld_dbid, fld_friend)                                  )###"
         u8R"###( ) strict;                                                               )###",
 
+        u8R"###( create table tbl_blacklist(                                             )###"
+        u8R"###(     fld_dbid           integer not null,                                )###"
+        u8R"###(     fld_blocked        integer not null,                                )###"
+        u8R"###(                                                                         )###"
+        u8R"###(     foreign key (fld_dbid   ) references tbl_char(fld_dbid),            )###"
+        u8R"###(     foreign key (fld_blocked) references tbl_char(fld_dbid),            )###"
+        u8R"###(     primary key (fld_dbid, fld_blocked)                                 )###"
+        u8R"###( ) strict;                                                               )###",
+
         u8R"###( create table tbl_chatmessage(                                           )###"
         u8R"###(     fld_id             integer not null primary key autoincrement,      )###"
         u8R"###(     fld_timestamp      integer not null,                                )###"
@@ -404,6 +413,8 @@ void MonoServer::CreateDBConnection()
     if(!hasDatabase()){
         createDefaultDatabase();
     }
+
+    g_dbPod->exec("PRAGMA foreign_keys = ON");
     addLog(LOGTYPE_INFO, "Connect to database %s successfully", dbName);
 }
 

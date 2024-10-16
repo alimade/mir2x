@@ -717,28 +717,59 @@ SDChatMessageList Player::dbRetrieveLatestChatMessage(const std::span<const uint
 
 SDAddFriendNotif Player::dbAddFriend(uint32_t argDBID)
 {
-    auto query = g_dbPod->createQuery(
-        u8R"###( insert or ignore into tbl_friend(fld_dbid, fld_friend) )###"
-        u8R"###( values                                                 )###"
-        u8R"###(     (%llu, %llu)                                       )###"
-        u8R"###( returning                                              )###"
-        u8R"###(     fld_dbid;                                          )###",
+    SDAddFriendNotif sdAFN;
+    auto dbTrans = g_dbPod->createTransaction();
 
-        to_llu(dbid()),
-        to_llu(argDBID));
+    g_dbPod->exec("delete from tbl_blacklist where fld_dbid = %llu and fld_blocked = %llu", to_llu(dbid()), to_llu(argDBID));
+    {
+        auto query = g_dbPod->createQuery(
+            u8R"###( insert or ignore into tbl_friend(fld_dbid, fld_friend) )###"
+            u8R"###( values                                                 )###"
+            u8R"###(     (%llu, %llu)                                       )###"
+            u8R"###( returning                                              )###"
+            u8R"###(     fld_dbid;                                          )###",
 
-    if(query.executeStep()){
-        return SDAddFriendNotif
-        {
-            .notif = AF_ACCEPTED,
-        };
+            to_llu(dbid()),
+            to_llu(argDBID));
+
+        if(query.executeStep()){
+            sdAFN.notif = AF_ACCEPTED;
+        }
+        else{
+            sdAFN.notif = AF_EXIST;
+        }
     }
-    else{
-        return SDAddFriendNotif
-        {
-            .notif = AF_EXIST,
-        };
+
+    dbTrans.commit();
+    return sdAFN;
+}
+
+SDAddBlockedNotif Player::dbAddBlocked(uint32_t argDBID)
+{
+    SDAddBlockedNotif sdABN;
+    auto dbTrans = g_dbPod->createTransaction();
+    g_dbPod->exec("delete from tbl_friend where fld_dbid = %llu and fld_friend = %llu", to_llu(dbid()), to_llu(argDBID));
+    {
+        auto query = g_dbPod->createQuery(
+            u8R"###( insert or ignore into tbl_blacklist(fld_dbid, fld_blocked) )###"
+            u8R"###( values                                                     )###"
+            u8R"###(     (%llu, %llu)                                           )###"
+            u8R"###( returning                                                  )###"
+            u8R"###(     fld_dbid;                                              )###",
+
+            to_llu(dbid()),
+            to_llu(argDBID));
+
+        if(query.executeStep()){
+            sdABN.notif = AB_DONE;
+        }
+        else{
+            sdABN.notif = AB_EXIST;
+        }
     }
+
+    dbTrans.commit();
+    return sdABN;
 }
 
 SDChatPeer Player::dbCreateChatGroup(const char *name, const std::span<const uint32_t> &dbidList)

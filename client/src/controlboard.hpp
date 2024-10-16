@@ -133,6 +133,9 @@ class ControlBoard: public Widget
         void inputLineDone();
 
     public:
+        void addParLog(const char *);
+
+    public:
         void addLog(int, const char *);
 
     public:
