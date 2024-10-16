@@ -53,7 +53,9 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
           0,
 
           true,
+          false,
           true,
+
           this,
           false,
       }
@@ -72,7 +74,7 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               m_showCandidateList = !m_showCandidateList;
               if(m_showCandidateList){
@@ -91,7 +93,9 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
           0,
 
           true,
+          false,
           true,
+
           this,
           false,
       }
@@ -110,7 +114,7 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(m_showCandidateList && (m_selectedIndex[m_showCandidateList] >= 0)){
                   m_processRun->requestJoinTeam(getSDTeamPlayer(m_selectedIndex[m_showCandidateList]).uid);
@@ -123,7 +127,9 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
           0,
 
           true,
+          false,
           true,
+
           this,
           false,
       }
@@ -142,7 +148,7 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(!m_showCandidateList && (m_selectedIndex[m_showCandidateList] >= 0)){
                   m_processRun->requestLeaveTeam(getSDTeamPlayer(m_selectedIndex[m_showCandidateList]).uid);
@@ -155,7 +161,9 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
           0,
 
           true,
+          false,
           true,
+
           this,
           false,
       }
@@ -174,7 +182,7 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               refresh();
           },
@@ -185,7 +193,9 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
           0,
 
           true,
+          false,
           true,
+
           this,
           false,
       }
@@ -204,7 +214,7 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               setShow(false);
           },
@@ -215,7 +225,9 @@ TeamStateBoard::TeamStateBoard(int argX, int argY, ProcessRun *runPtr, Widget *w
           0,
 
           true,
+          false,
           true,
+
           this,
           false,
       }

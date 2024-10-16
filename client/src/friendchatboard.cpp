@@ -104,7 +104,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               setShow(false);
           },
@@ -115,7 +115,9 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
           0,
 
           true,
+          false,
           true,
+
           this,
       }
 
@@ -162,7 +164,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                                   setUIPage(UIPage_CHATPREVIEW);
                               },
@@ -187,7 +189,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                               },
                           },
@@ -211,7 +213,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                               },
                           },
@@ -235,7 +237,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                               },
                           },
@@ -333,7 +335,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                                   setUIPage(UIPage_FRIENDLIST);
                               },
@@ -415,7 +417,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                                   setUIPage(UIPage_CHATPREVIEW);
                               },
@@ -440,7 +442,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                                   setUIPage(UIPage_FRIENDSEARCH);
                               },
@@ -465,7 +467,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                                   setUIPage(UIPage_CREATEGROUP);
                               },
@@ -547,7 +549,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                                   setUIPage(UIPage_CHATPREVIEW);
                               },
@@ -629,7 +631,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                                   setUIPage(UIPage_CHATPREVIEW);
                               },
@@ -654,13 +656,13 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                                   std::vector<uint32_t> dbidList;
                                   dynamic_cast<FriendListPage *>(m_uiPageList[UIPage_CREATEGROUP].page)->canvas.foreachChild([&dbidList](const Widget *widget, bool)
                                   {
                                       if(const auto friendItem = dynamic_cast<const FriendItem *>(widget)){
-                                          if(const auto checkBox = dynamic_cast<const CheckBox *>(friendItem->hasChild(friendItem->funcWidgetID)); checkBox->checkedValue()){
+                                          if(const auto checkBox = dynamic_cast<const CheckBox *>(friendItem->hasChild(friendItem->funcWidgetID)); checkBox->getter()){
                                               dbidList.push_back(friendItem->cpid.id());
                                           }
                                       }
@@ -727,12 +729,12 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
-                              [this](ButtonBase *)
+                              [this](Widget *)
                               {
                                   dynamic_cast<FriendListPage *>(m_uiPageList[UIPage_CREATEGROUP].page)->canvas.foreachChild([](Widget *widget, bool)
                                   {
                                       if(auto friendItem = dynamic_cast<FriendItem *>(widget)){
-                                          if(auto checkBox = dynamic_cast<CheckBox *>(friendItem->hasChild(friendItem->funcWidgetID)); checkBox->checkedValue()){
+                                          if(auto checkBox = dynamic_cast<CheckBox *>(friendItem->hasChild(friendItem->funcWidgetID)); checkBox->getter()){
                                               checkBox->toggle();
                                           }
                                       }

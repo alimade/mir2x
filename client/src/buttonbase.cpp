@@ -14,9 +14,9 @@ ButtonBase::ButtonBase(
         int argW,
         int argH,
 
-        std::function<void(ButtonBase *)> fnOnOverIn,
-        std::function<void(ButtonBase *)> fnOnOverOut,
-        std::function<void(ButtonBase *)> fnOnClick,
+        std::function<void(Widget *)> fnOnOverIn,
+        std::function<void(Widget *)> fnOnOverOut,
+        std::function<void(Widget *)> fnOnClick,
 
         std::optional<uint32_t> seffIDOnOverIn,
         std::optional<uint32_t> seffIDOnOverOut,
@@ -28,6 +28,7 @@ ButtonBase::ButtonBase(
         int offYOnClick,
 
         bool onClickDone,
+        bool radioMode,
 
         Widget *widgetPtr,
         bool    autoFree)
@@ -47,6 +48,7 @@ ButtonBase::ButtonBase(
       }
 
     , m_onClickDone(onClickDone)
+    , m_radioMode(radioMode)
 
     , m_seffID
       {
@@ -97,9 +99,14 @@ bool ButtonBase::processEvent(const SDL_Event &event, bool valid)
                             }
                         case BEVENT_DOWN:
                             {
-                                setState(BEVENT_ON);
-                                if(m_onClickDone){
-                                    onClick();
+                                if(m_radioMode){
+                                    // keep pressed
+                                }
+                                else{
+                                    setState(BEVENT_ON);
+                                    if(m_onClickDone){
+                                        onClick();
+                                    }
                                 }
                                 break;
                             }
@@ -109,6 +116,9 @@ bool ButtonBase::processEvent(const SDL_Event &event, bool valid)
                             }
                     }
                     return consumeFocus(true);
+                }
+                else if(m_radioMode){
+                    return consumeFocus(false);
                 }
                 else{
                     if(getState() != BEVENT_OFF){
@@ -143,6 +153,9 @@ bool ButtonBase::processEvent(const SDL_Event &event, bool valid)
                     }
                     return consumeFocus(true);
                 }
+                else if(m_radioMode){
+                    return consumeFocus(false);
+                }
                 else{
                     if(getState() != BEVENT_OFF){
                         setState(BEVENT_OFF);
@@ -167,6 +180,9 @@ bool ButtonBase::processEvent(const SDL_Event &event, bool valid)
                                     // hold the button and moving
                                     // don't trigger
                                 }
+                                else if(m_radioMode){
+                                    // keep pressed
+                                }
                                 else{
                                     setState(BEVENT_ON);
                                     onBadEvent();
@@ -179,6 +195,9 @@ bool ButtonBase::processEvent(const SDL_Event &event, bool valid)
                             }
                     }
                     return consumeFocus(true);
+                }
+                else if(m_radioMode){
+                    return consumeFocus(false);
                 }
                 else{
                     if(getState() != BEVENT_OFF){

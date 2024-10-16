@@ -65,7 +65,7 @@ InputStringBoard::InputStringBoard(dir8_t dir, int x, int y, bool security, Widg
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               inputLineDone();
               setShow(false);
@@ -78,6 +78,8 @@ InputStringBoard::InputStringBoard(dir8_t dir, int x, int y, bool security, Widg
 
           true,
           false,
+          false,
+
           this,
           false,
       }
@@ -96,7 +98,7 @@ InputStringBoard::InputStringBoard(dir8_t dir, int x, int y, bool security, Widg
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               setShow(false);
               m_input.clear();
@@ -109,6 +111,8 @@ InputStringBoard::InputStringBoard(dir8_t dir, int x, int y, bool security, Widg
 
           true,
           false,
+          false,
+
           this,
           false,
       }

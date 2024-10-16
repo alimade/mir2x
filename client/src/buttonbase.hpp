@@ -53,6 +53,7 @@ class ButtonBase: public Widget
 
     protected:
         const bool m_onClickDone;
+        const bool m_radioMode;
 
     protected:
         const std::optional<uint32_t> m_seffID[3];
@@ -61,9 +62,9 @@ class ButtonBase: public Widget
         const int m_offset[3][2];
 
     protected:
-        std::function<void(ButtonBase *)> m_onOverIn;
-        std::function<void(ButtonBase *)> m_onOverOut;
-        std::function<void(ButtonBase *)> m_onClick;
+        std::function<void(Widget *)> m_onOverIn;
+        std::function<void(Widget *)> m_onOverOut;
+        std::function<void(Widget *)> m_onClick;
 
     public:
         ButtonBase(dir8_t,
@@ -72,9 +73,9 @@ class ButtonBase: public Widget
                 int,
                 int,
 
-                std::function<void(ButtonBase *)> = nullptr,
-                std::function<void(ButtonBase *)> = nullptr,
-                std::function<void(ButtonBase *)> = nullptr,
+                std::function<void(Widget *)> = nullptr,
+                std::function<void(Widget *)> = nullptr,
+                std::function<void(Widget *)> = nullptr,
 
                 std::optional<uint32_t> = {},
                 std::optional<uint32_t> = {},
@@ -86,6 +87,7 @@ class ButtonBase: public Widget
                 int = 0,
 
                 bool = true,
+                bool = false,
 
                 Widget * = nullptr,
                 bool     = false);
@@ -125,12 +127,9 @@ class ButtonBase: public Widget
         }
 
     public:
-        // we can automatically do this or call this function
-        // sometimes when we invoke the callback it changes the button location
-        void setOff()
-        {
-            setState(BEVENT_OFF);
-        }
+        void setOff () { setState(BEVENT_OFF ); }
+        void setOn  () { setState(BEVENT_ON  ); }
+        void setDown() { setState(BEVENT_DOWN); }
 
     private:
         void onClick();

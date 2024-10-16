@@ -112,7 +112,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = m_processRun->getWidget("QuickAccessBoard")){
                   p->flipShow();
@@ -125,7 +125,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_left,
       }
 
@@ -143,7 +145,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [](ButtonBase *)
+          [](Widget *)
           {
               std::exit(0);
           },
@@ -154,7 +156,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_left,
       }
 
@@ -180,7 +184,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_left,
       }
 
@@ -200,7 +206,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               addLog(0, "exchange doesn't implemented yet.");
           },
@@ -225,7 +231,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = dynamic_cast<MiniMapBoard *>(m_processRun->getWidget("MiniMapBoard"))){
                   if(p->getMiniMapTexture()){
@@ -257,7 +263,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               m_processRun->flipDrawMagicKey();
           },
@@ -280,7 +286,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = m_processRun->getWidget("InventoryBoard")){
                   p->flipShow();
@@ -293,7 +299,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_right,
       }
 
@@ -311,7 +319,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = m_processRun->getWidget("PlayerStateBoard")){
                   p->flipShow();
@@ -324,7 +332,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_right,
       }
 
@@ -342,7 +352,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = m_processRun->getWidget("SkillBoard")){
                   p->flipShow();
@@ -355,7 +365,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_right,
       }
 
@@ -373,7 +385,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = m_processRun->getWidget("GuildBoard")){
                   p->flipShow();
@@ -386,7 +398,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_right,
       }
 
@@ -404,7 +418,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               auto boardPtr = dynamic_cast<TeamStateBoard *>(m_processRun->getWidget("TeamStateBoard"));
               auto  heroPtr = m_processRun->getMyHero();
@@ -426,7 +440,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_right,
       }
 
@@ -444,7 +460,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = m_processRun->getWidget("QuestStateBoard")){
                   p->flipShow();
@@ -459,7 +475,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_right,
       }
 
@@ -477,7 +495,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = m_processRun->getWidget("HorseBoard")){
                   p->flipShow();
@@ -490,7 +508,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_right,
       }
 
@@ -508,7 +528,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = m_processRun->getWidget("RuntimeConfigBoard")){
                   p->flipShow();
@@ -521,7 +541,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_right,
       }
 
@@ -539,7 +561,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               if(auto p = m_processRun->getWidget("FriendChatBoard")){
                   p->flipShow();
@@ -552,7 +574,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_right,
       }
 
@@ -600,7 +624,7 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               switchExpandMode();
           },
@@ -611,7 +635,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_middle,
       }
 
@@ -637,7 +663,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_middle,
       }
 
@@ -663,7 +691,9 @@ ControlBoard::ControlBoard(int boardW, int startY, ProcessRun *proc, Widget *pwi
           0,
 
           true,
+          false,
           true,
+
           &m_middle,
       }
 

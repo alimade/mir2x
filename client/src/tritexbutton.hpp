@@ -24,9 +24,9 @@ class TritexButton: public ButtonBase
                 const uint32_t (& texIDList)[3],
                 const uint32_t (&seffIDList)[3],
 
-                std::function<void(ButtonBase *)> fnOnOverIn  = nullptr,
-                std::function<void(ButtonBase *)> fnOnOverOut = nullptr,
-                std::function<void(ButtonBase *)> fnOnClick   = nullptr,
+                std::function<void(Widget *)> fnOnOverIn  = nullptr,
+                std::function<void(Widget *)> fnOnOverOut = nullptr,
+                std::function<void(Widget *)> fnOnClick   = nullptr,
 
                 int offXOnOver  = 0,
                 int offYOnOver  = 0,
@@ -34,6 +34,7 @@ class TritexButton: public ButtonBase
                 int offYOnClick = 0,
 
                 bool onClickDone = true,
+                bool radioMode   = false,
                 bool alterColor  = true,
 
                 Widget *widgetPtr  = nullptr,
@@ -60,6 +61,8 @@ class TritexButton: public ButtonBase
                   offYOnClick,
 
                   onClickDone,
+                  radioMode,
+
                   widgetPtr,
                   autoDelete,
               }

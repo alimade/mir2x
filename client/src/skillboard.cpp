@@ -120,7 +120,9 @@ SkillBoard::MagicIconButton::MagicIconButton(int argX, int argY, uint32_t argMag
           0,
 
           false,
+          false,
           true,
+
           this,
           false,
       }
@@ -294,12 +296,12 @@ SkillBoard::SkillBoard(int argX, int argY, ProcessRun *runPtr, Widget *widgetPtr
                       0X01020000 + 105,
                   },
 
-                  [i, this](ButtonBase *)
+                  [i, this](Widget *)
                   {
                       m_cursorOnTabIndex = i;
                   },
 
-                  [i, this](ButtonBase *)
+                  [i, this](Widget *)
                   {
                       if(i != m_cursorOnTabIndex){
                           return;
@@ -307,7 +309,7 @@ SkillBoard::SkillBoard(int argX, int argY, ProcessRun *runPtr, Widget *widgetPtr
                       m_cursorOnTabIndex = -1;
                   },
 
-                  [i, this](ButtonBase *)
+                  [i, this](Widget *)
                   {
                       if(m_selectedTabIndex == i){
                           return;
@@ -343,7 +345,9 @@ SkillBoard::SkillBoard(int argX, int argY, ProcessRun *runPtr, Widget *widgetPtr
                   0,
 
                   false,
+                  true,
                   false,
+
                   this,
                   true,
               });
@@ -396,7 +400,7 @@ SkillBoard::SkillBoard(int argX, int argY, ProcessRun *runPtr, Widget *widgetPtr
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               setShow(false);
           },
@@ -407,7 +411,9 @@ SkillBoard::SkillBoard(int argX, int argY, ProcessRun *runPtr, Widget *widgetPtr
           0,
 
           true,
+          false,
           true,
+
           this,
       }
     , m_processRun(runPtr)

@@ -48,7 +48,7 @@ InventoryBoard::InventoryBoard(int nX, int nY, ProcessRun *pRun, Widget *pwidget
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               m_processRun->getMyHero()->getInvPack().repack();
           },
@@ -59,7 +59,9 @@ InventoryBoard::InventoryBoard(int nX, int nY, ProcessRun *pRun, Widget *pwidget
           0,
 
           true,
+          false,
           true,
+
           this,
       }
 
@@ -77,7 +79,7 @@ InventoryBoard::InventoryBoard(int nX, int nY, ProcessRun *pRun, Widget *pwidget
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               setShow(false);
               m_sdInvOp.clear();
@@ -89,7 +91,9 @@ InventoryBoard::InventoryBoard(int nX, int nY, ProcessRun *pRun, Widget *pwidget
           0,
 
           true,
+          false,
           true,
+
           this,
       }
 
@@ -112,7 +116,7 @@ InventoryBoard::InventoryBoard(int nX, int nY, ProcessRun *pRun, Widget *pwidget
 
           nullptr,
           nullptr,
-          [this](ButtonBase *)
+          [this](Widget *)
           {
               commitInvOp();
           },
@@ -123,7 +127,9 @@ InventoryBoard::InventoryBoard(int nX, int nY, ProcessRun *pRun, Widget *pwidget
           0,
 
           true,
+          false,
           true,
+
           this,
       }
 
