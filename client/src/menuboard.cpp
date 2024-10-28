@@ -112,16 +112,16 @@ MenuBoard::MenuBoard(
 
           [](const Widget *self, int dstDrawX, int dstDrawY)
           {
-              g_sdlDevice->drawRectangle(colorf::BLACK + colorf::A_SHF(255), dstDrawX, dstDrawY, self->w(), self->h());
+              g_sdlDevice->drawRectangle(colorf::GREY + colorf::A_SHF(128), dstDrawX, dstDrawY, self->w(), self->h());
           },
 
           this,
           false,
       }
 {
-    moveFront(&m_background);
     moveFront(&m_frame);
     moveFront(&m_wrapper);
+    moveFront(&m_background);
 
     for(auto [widget, addSeparator, autoDelete]: argMenuItemList){
         appendMenu(widget, addSeparator, autoDelete);
