@@ -160,7 +160,7 @@ RuntimeConfigBoard::PullMenu::PullMenu(
         int argTitleBgWidth,
         int argTitleBgHeight,
 
-        std::initializer_list<std::pair<Widget *, bool>> argMenuList,
+        std::initializer_list<std::tuple<Widget *, bool, bool>> argMenuList,
         std::function<void(Widget *)> argOnClickMenu,
 
         Widget *argParent,
@@ -322,14 +322,13 @@ RuntimeConfigBoard::PullMenu::PullMenu(
           0,
 
           {},
+          {10, 10, 10, 10},
 
           10,
-          0,
+          20,
 
           argMenuList,
           std::move(argOnClickMenu),
-
-          {10, 10, 10, 10},
 
           this,
           false,
@@ -780,12 +779,12 @@ RuntimeConfigBoard::RuntimeConfigBoard(int argX, int argY, int argW, int argH, P
           24,
 
           {
-              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"800×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 800, 600)), true},
-              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"960×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 960, 600)), true},
-              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1024×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1024, 768)), true},
-              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×720", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 720)), true},
-              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 768)), true},
-              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×800", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 800)), true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"800×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 800, 600)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"960×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 960, 600)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1024×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1024, 768)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×720", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 720)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 768)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×800", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 800)), false, true},
           },
 
           [this](Widget *widgetPtr)
@@ -1024,22 +1023,32 @@ RuntimeConfigBoard::RuntimeConfigBoard(int argX, int argY, int argW, int argH, P
                               5,
 
                               {
-                                  {(new LabelBoard{DIR_UPLEFT, 0, 0, u8"允许任何人加我微好友", 1, 12, 0})->setData(0), true},
-                                  {(new LabelBoard{DIR_UPLEFT, 0, 0, u8"拒绝任何人加我为好友", 1, 12, 0})->setData(1), true},
-                                  {(new LabelBoard{DIR_UPLEFT, 0, 0, u8"好友申请验证"        , 1, 12, 0})->setData(2), true},
+                                  {(new LabelBoard{DIR_UPLEFT, 0, 0, u8"允许任何人加我微好友", 1, 12, 0})->setData(to_d(FR_ACCEPT)), true},
+                                  {(new LabelBoard{DIR_UPLEFT, 0, 0, u8"拒绝任何人加我为好友", 1, 12, 0})->setData(to_d(FR_REJECT)), true},
+                                  {(new LabelBoard{DIR_UPLEFT, 0, 0, u8"好友申请验证"        , 1, 12, 0})->setData(to_d(FR_VERIFY)), true},
                               },
 
                               [this](const Widget *radioSelector)
                               {
-                                  return radioSelector->hasChild([val = SDRuntimeConfig_getConfig<RTCFG_好友申请>(m_sdRuntimeConfig)](const Widget *child, bool) -> const Widget *
+                                  const Widget *selectedWidget = nullptr;
+                                  const auto val = SDRuntimeConfig_getConfig<RTCFG_好友申请>(m_sdRuntimeConfig);
+
+                                  dynamic_cast<const RadioSelector *>(radioSelector)->foreachRadioWidget([&selectedWidget, val](const Widget *widget)
                                   {
-                                      if(dynamic_cast<const TrigfxButton *>(child)){
-                                          if(std::any_cast<int>(std::any_cast<Widget *>(child->data())->data()) == val){
-                                              return child;
-                                          }
+                                      if(std::any_cast<int>(widget->data()) == val){
+                                          selectedWidget = widget;
+                                          return true;
                                       }
-                                      return nullptr;
+                                      return false;
                                   });
+
+                                  return selectedWidget;
+                              },
+
+                              [this](Widget *, Widget *radioWidget)
+                              {
+                                  SDRuntimeConfig_setConfig<RTCFG_好友申请>(m_sdRuntimeConfig, std::any_cast<int>(radioWidget->data()));
+                                  reportRuntimeConfig(RTCFG_好友申请);
                               },
 
                           }, DIR_UPLEFT, 0, 20, true},

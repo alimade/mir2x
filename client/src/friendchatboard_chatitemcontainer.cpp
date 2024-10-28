@@ -306,6 +306,7 @@ void FriendChatBoard::ChatItemContainer::append(const SDChatMessage &sdCM, std::
 
         to_u8cstr("..."),
         to_u8cstr(cerealf::deserialize<std::string>(sdCM.message)),
+        nullptr,
 
         [](const ImageBoard *)
         {

@@ -24,6 +24,12 @@
 class Widget;        // size concept
 class WidgetTreeNode // tree concept, used by class Widget only
 {
+    protected:
+        using VarDir  = std::variant<             dir8_t, std::function<dir8_t(const Widget *)>>;
+        using VarOff  = std::variant<                int, std::function<   int(const Widget *)>>;
+        using VarSize = std::variant<std::monostate, int, std::function<   int(const Widget *)>>;
+        using VarFlag = std::variant<               bool, std::function<  bool(const Widget *)>>;
+
     private:
         friend class Widget;
 
@@ -63,6 +69,11 @@ class WidgetTreeNode // tree concept, used by class Widget only
         uint64_t id() const
         {
             return m_id;
+        }
+
+        const char *name() const
+        {
+            return typeid(*this).name();
         }
 
     public:
@@ -234,7 +245,7 @@ class WidgetTreeNode // tree concept, used by class Widget only
 
     public:
         virtual void addChild(Widget *, bool);
-        virtual void addChild(dir8_t, int, int, Widget *, bool);
+        virtual void addChild(Widget *, WidgetTreeNode::VarDir, WidgetTreeNode::VarOff, WidgetTreeNode::VarOff, bool);
 
     public:
         bool hasChild() const;
@@ -268,10 +279,10 @@ class WidgetTreeNode // tree concept, used by class Widget only
 class Widget: public WidgetTreeNode
 {
     public:
-        using VarDir    = std::variant<             dir8_t, std::function<dir8_t(const Widget *)>>;
-        using VarOffset = std::variant<                int, std::function<   int(const Widget *)>>;
-        using VarSize   = std::variant<std::monostate, int, std::function<   int(const Widget *)>>;
-        using VarFlag   = std::variant<               bool, std::function<  bool(const Widget *)>>;
+        using WidgetTreeNode::VarDir;
+        using WidgetTreeNode::VarOff;
+        using WidgetTreeNode::VarSize;
+        using WidgetTreeNode::VarFlag;
 
     public:
         static bool hasIntDir(const Widget::VarDir &varDir)
@@ -307,23 +318,23 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        static bool hasIntOffset(const Widget::VarOffset &varOff)
+        static bool hasIntOffset(const Widget::VarOff &varOff)
         {
             return varOff.index() == 0;
         }
 
-        static bool hasFuncOffset(const Widget::VarOffset &varOff)
+        static bool hasFuncOffset(const Widget::VarOff &varOff)
         {
             return varOff.index() == 1;
         }
 
-        static int  asIntOffset(const Widget::VarOffset &varOff) { return std::get<int>(varOff); }
-        static int &asIntOffset(      Widget::VarOffset &varOff) { return std::get<int>(varOff); }
+        static int  asIntOffset(const Widget::VarOff &varOff) { return std::get<int>(varOff); }
+        static int &asIntOffset(      Widget::VarOff &varOff) { return std::get<int>(varOff); }
 
-        static const std::function<int(const Widget *)> &asFuncOffset(const Widget::VarOffset &varOff) { return std::get<std::function<int(const Widget *)>>(varOff); }
-        static       std::function<int(const Widget *)> &asFuncOffset(      Widget::VarOffset &varOff) { return std::get<std::function<int(const Widget *)>>(varOff); }
+        static const std::function<int(const Widget *)> &asFuncOffset(const Widget::VarOff &varOff) { return std::get<std::function<int(const Widget *)>>(varOff); }
+        static       std::function<int(const Widget *)> &asFuncOffset(      Widget::VarOff &varOff) { return std::get<std::function<int(const Widget *)>>(varOff); }
 
-        static int evalOffset(const Widget::VarOffset &varOffset, const Widget *widgetPtr)
+        static int evalOffset(const Widget::VarOff &varOffset, const Widget *widgetPtr)
         {
             return std::visit(VarDispatcher
             {
@@ -394,6 +405,30 @@ class Widget: public WidgetTreeNode
             }, varFlag);
         }
 
+    private:
+        class RecursionDetector final
+        {
+            private:
+                bool &m_flag;
+
+            public:
+                RecursionDetector(bool &flag, const char *type, const char *func)
+                    : m_flag(flag)
+                {
+                    if(m_flag){
+                        throw fflerror("recursion detected in %s::%s", type, func);
+                    }
+                    else{
+                        m_flag = true;
+                    }
+                }
+
+                ~RecursionDetector()
+                {
+                    m_flag = false;
+                }
+        };
+
     protected:
         std::pair<Widget::VarFlag, bool> m_show   {true, false};
         std::pair<Widget::VarFlag, bool> m_active {true, false};
@@ -408,23 +443,27 @@ class Widget: public WidgetTreeNode
         Widget::VarDir m_dir;
 
     private:
-        std::pair<Widget::VarOffset, int> m_x;
-        std::pair<Widget::VarOffset, int> m_y;
+        std::pair<Widget::VarOff, int> m_x;
+        std::pair<Widget::VarOff, int> m_y;
 
     protected:
         Widget::VarSize m_w;
         Widget::VarSize m_h;
 
+    private:
+        mutable bool m_hCalc = false;
+        mutable bool m_wCalc = false;
+
     public:
         Widget(Widget::VarDir argDir,
 
-                Widget::VarOffset argX,
-                Widget::VarOffset argY,
+                Widget::VarOff argX,
+                Widget::VarOff argY,
 
                 Widget::VarSize argW = {},
                 Widget::VarSize argH = {},
 
-                std::initializer_list<std::tuple<Widget *, Widget::VarDir, Widget::VarOffset, Widget::VarOffset, bool>> argChildList = {},
+                std::vector<std::tuple<Widget *, Widget::VarDir, Widget::VarOff, Widget::VarOff, bool>> argChildList = {},
 
                 Widget *argParent     = nullptr,
                 bool    argAutoDelete = false)
@@ -448,10 +487,9 @@ class Widget: public WidgetTreeNode
             if(Widget::hasIntSize(m_w)){ fflassert(Widget::asIntSize(m_w) >= 0, m_w); }
             if(Widget::hasIntSize(m_h)){ fflassert(Widget::asIntSize(m_h) >= 0, m_h); }
 
-            for(const auto &[childPtr, offDir, offX, offY, autoDelete]: argChildList){
+            for(auto &[childPtr, offDir, offX, offY, autoDelete]: argChildList){
                 if(childPtr){
-                    addChild(childPtr, autoDelete);
-                    childPtr->moveAt(offDir, offX, offY);
+                    addChild(childPtr, std::move(offDir), std::move(offX), std::move(offY), autoDelete);
                 }
             }
         }
@@ -645,6 +683,7 @@ class Widget: public WidgetTreeNode
 
         virtual int w() const
         {
+            const RecursionDetector hDetect(m_wCalc, name(), "w()");
             const auto width = std::visit(VarDispatcher
             {
                 [](const int &arg)
@@ -676,6 +715,7 @@ class Widget: public WidgetTreeNode
 
         virtual int h() const
         {
+            const RecursionDetector hDetect(m_hCalc, name(), "h()");
             const auto height = std::visit(VarDispatcher
             {
                 [](const int &arg)
@@ -833,7 +873,7 @@ class Widget: public WidgetTreeNode
             //
             // when appending a new item, say item2, auto-scaling mode check current page height and append the new item at proper start:
             //
-            //     page->addChild(DIR_UPLEFT, 0, page->h(), item2, true);
+            //     page->addChild(item2, DIR_UPLEFT, 0, page->h(), true);
             //
             // if implementation of show() checks if parent shows or not
             // and if page is not shown, page->h() always return 0, even there is item0 and item1 inside
@@ -875,9 +915,9 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        void moveBy(Widget::VarOffset dx, Widget::VarOffset dy)
+        void moveBy(Widget::VarOff dx, Widget::VarOff dy)
         {
-            const auto fnOp = [](std::pair<Widget::VarOffset, int> &offset, Widget::VarOffset update)
+            const auto fnOp = [](std::pair<Widget::VarOff, int> &offset, Widget::VarOff update)
             {
                 if(Widget::hasIntOffset(update)){
                     offset.second += Widget::asIntOffset(update);
@@ -898,7 +938,7 @@ class Widget: public WidgetTreeNode
             fnOp(m_y, std::move(dy));
         }
 
-        void moveAt(Widget::VarDir argDir, Widget::VarOffset argX, Widget::VarOffset argY)
+        void moveAt(Widget::VarDir argDir, Widget::VarOff argX, Widget::VarOff argY)
         {
             m_dir = std::move(argDir);
             m_x   = std::make_pair(std::move(argX), 0);
@@ -906,11 +946,11 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        void moveXTo(Widget::VarOffset arg) { m_x   = std::make_pair(std::move(arg), 0); }
-        void moveYTo(Widget::VarOffset arg) { m_y   = std::make_pair(std::move(arg), 0); }
+        void moveXTo(Widget::VarOff arg) { m_x   = std::make_pair(std::move(arg), 0); }
+        void moveYTo(Widget::VarOff arg) { m_y   = std::make_pair(std::move(arg), 0); }
 
     public:
-        void moveTo(Widget::VarOffset argX, Widget::VarOffset argY)
+        void moveTo(Widget::VarOff argX, Widget::VarOff argY)
         {
             moveXTo(std::move(argX));
             moveYTo(std::move(argY));

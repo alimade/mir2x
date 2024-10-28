@@ -7,8 +7,8 @@ extern SDLDevice *g_sdlDevice;
 
 FriendChatBoard::SearchAutoCompletionItem::SearchAutoCompletionItem(Widget::VarDir argDir,
 
-        Widget::VarOffset argX,
-        Widget::VarOffset argY,
+        Widget::VarOff argX,
+        Widget::VarOff argY,
 
         bool argByID,
         SDChatPeer argCandidate,

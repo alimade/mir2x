@@ -7,12 +7,11 @@
 extern SDLDevice *g_sdlDevice;
 extern SoundEffectDB *g_seffDB;
 
-ButtonBase::ButtonBase(
-        dir8_t argDir,
-        int argX,
-        int argY,
-        int argW,
-        int argH,
+ButtonBase::ButtonBase(Widget::VarDir argDir,
+        Widget::VarOff argX,
+        Widget::VarOff argY,
+        Widget::VarSize   argW,
+        Widget::VarSize   argH,
 
         std::function<void(Widget *)> fnOnOverIn,
         std::function<void(Widget *)> fnOnOverOut,
@@ -35,11 +34,11 @@ ButtonBase::ButtonBase(
 
     : Widget
       {
-          argDir,
-          argX,
-          argY,
-          argW,
-          argH,
+          std::move(argDir),
+          std::move(argX),
+          std::move(argY),
+          std::move(argW),
+          std::move(argH),
 
           {},
 
@@ -72,16 +71,31 @@ ButtonBase::ButtonBase(
 bool ButtonBase::processEvent(const SDL_Event &event, bool valid)
 {
     if(!valid){
-        if(getState() != BEVENT_OFF){
-            setState(BEVENT_OFF);
-            onOverOut();
+        if(m_radioMode){
+            if(getState() == BEVENT_ON){
+                setState(BEVENT_OFF);
+                onOverOut();
+            }
+        }
+        else{
+            if(getState() != BEVENT_OFF){
+                setState(BEVENT_OFF);
+                onOverOut();
+            }
         }
         return consumeFocus(false);
     }
 
     if(!active()){
-        if(getState() != BEVENT_OFF){
-            setState(BEVENT_OFF);
+        if(m_radioMode){
+            if(getState() == BEVENT_ON){
+                setState(BEVENT_OFF);
+            }
+        }
+        else{
+            if(getState() != BEVENT_OFF){
+                setState(BEVENT_OFF);
+            }
         }
         return consumeFocus(false);
     }
@@ -197,6 +211,10 @@ bool ButtonBase::processEvent(const SDL_Event &event, bool valid)
                     return consumeFocus(true);
                 }
                 else if(m_radioMode){
+                    if(getState() == BEVENT_ON){
+                        setState(BEVENT_OFF);
+                        onOverOut();
+                    }
                     return consumeFocus(false);
                 }
                 else{

@@ -1,9 +1,10 @@
 #include "sdldevice.hpp"
 #include "shapeclipboard.hpp"
 
-ShapeClipBoard::ShapeClipBoard(dir8_t argDir,
-        int argX,
-        int argY,
+ShapeClipBoard::ShapeClipBoard(Widget::VarDir argDir,
+        Widget::VarOff argX,
+        Widget::VarOff argY,
+
         Widget::VarSize argW,
         Widget::VarSize argH,
 
@@ -11,12 +12,12 @@ ShapeClipBoard::ShapeClipBoard(dir8_t argDir,
 
         Widget *argParent,
         bool    argAutoDelete)
+
     : Widget
       {
-          argDir,
-
-          argX,
-          argY,
+          std::move(argDir),
+          std::move(argX),
+          std::move(argY),
           std::move(argW),
           std::move(argH),
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <string>
 #include <unordered_map>
 #include "widget.hpp"
 #include "serdesmsg.hpp"
@@ -11,6 +12,7 @@
 #include "tritexbutton.hpp"
 #include "shapeclipboard.hpp"
 #include "gfxcropdupboard.hpp"
+#include "trigfxbutton.hpp"
 
 class ProcessRun;
 class FriendChatBoard: public Widget
@@ -75,8 +77,8 @@ class FriendChatBoard: public Widget
         {
             Widget canvas;
             FriendListPage(Widget::VarDir,
-                    Widget::VarOffset,
-                    Widget::VarOffset,
+                    Widget::VarOff,
+                    Widget::VarOff,
 
                     Widget * = nullptr,
                     bool     = false);
@@ -119,8 +121,8 @@ class FriendChatBoard: public Widget
 
             SearchInputLine(Widget::VarDir,
 
-                    Widget::VarOffset,
-                    Widget::VarOffset,
+                    Widget::VarOff,
+                    Widget::VarOff,
 
                     Widget * = nullptr,
                     bool     = false);
@@ -161,8 +163,8 @@ class FriendChatBoard: public Widget
 
             SearchAutoCompletionItem(Widget::VarDir,
 
-                    Widget::VarOffset,
-                    Widget::VarOffset,
+                    Widget::VarOff,
+                    Widget::VarOff,
 
                     bool,
                     SDChatPeer,
@@ -200,8 +202,8 @@ class FriendChatBoard: public Widget
 
             SearchPage(Widget::VarDir,
 
-                    Widget::VarOffset,
-                    Widget::VarOffset,
+                    Widget::VarOff,
+                    Widget::VarOff,
 
                     Widget * = nullptr,
                     bool     = false);
@@ -210,10 +212,53 @@ class FriendChatBoard: public Widget
             void appendAutoCompletionItem(bool, const SDChatPeer &, const std::string &);
         };
 
+        struct ChatItemRef: public Widget
+        {
+            //  ->|                              |<------ WIDTH = MARGIN * 2 + message.w()
+            //  ->| |<----------------------------------- MARGIN
+            //  ->||<------------------------------------ CORNER
+            //    /------------------------------\  -
+            //    | +----------------------+     |  |
+            //    | |        message       | (x) |  +---- HEIGHT = MARGIN * 2 + message.h()
+            //    | +----------------------+     |  |
+            //    \------------------------------/  -
+            //                           ->| |<---------- BUTTON_MARGIN
+            //                              ->||<-------- BUTTON_R
+            //                               ->| |<------ BUTTON_MARGIN
+
+            constexpr static int MARGIN = 3;
+            constexpr static int CORNER = 3;
+
+            constexpr static int BUTTON_R      = 5;
+            constexpr static int BUTTON_MARGIN = 5;
+
+            ShapeClipBoard background; // round corner rectangle
+
+            LabelBoard     cross;
+            ShapeClipBoard crossBg; // round cover under x
+            Widget         crossButtonGfx;
+            TrigfxButton   crossButton;
+
+            LayoutBoard message;
+
+            ChatItemRef(dir8_t,
+                    int,
+                    int,
+                    int, // max width
+
+                    bool, // force max width
+                    bool, // show x button
+
+                    std::string,
+
+                    Widget * = nullptr,
+                    bool     = false);
+        };
+
         struct ChatItem: public Widget
         {
-            //          WIDTH
-            // |<------------------->|
+            //            WIDTH
+            // |<----------------------->|
             //       GAP
             //     ->| |<-
             // +-----+     +--------+      -
@@ -228,10 +273,14 @@ class FriendChatBoard: public Widget
             // |     |  ^  | ........... |                  | background includes messsage round-corner background box and the triangle area
             // +-----+  |  | ........... |                  |
             //          |  | ........... |                  |
-            //          |  \-------------/<- MESSAGE_CORNER |
-            //          |            ->| |<-                |
-            //          |             MESSAGE_MARGIN        |
-            //          +-----------------------------------+
+            //          |  \-------------/<- MESSAGE_CORNER |  -
+            //          |            ->| |<-                |  ^
+            //          |             MESSAGE_MARGIN        |  |
+            //          +-----------------------------------+  +-- REF_GAP
+            //                                                 |
+            //             /---------\                         -
+            //             | msg ref |
+            //             \---------/
             //
             //
             //            -->|  |<-- TRIANGLE_WIDTH
@@ -242,10 +291,10 @@ class FriendChatBoard: public Widget
             //           |    \ |                | /    |               |
             //      -----+     \|                |/     +-----          v
             //                3 +                + 3                    -
-            //           |<---->|                |<---->|
-            //           ^  GAP                     GAP ^
-            //           |                              |
-            //           +-- startX of background       +-- endX of background
+            //           |<->| GAP                  |<->| GAP
+            //               ^                      ^
+            //               |                      |
+            //               +-- background startX  +-- background endX
 
             constexpr static int AVATAR_WIDTH  = 35;
             constexpr static int AVATAR_HEIGHT = AVATAR_WIDTH * 94 / 84;
@@ -265,6 +314,8 @@ class FriendChatBoard: public Widget
             constexpr static int MESSAGE_MIN_WIDTH  = 10; // handling small size message
             constexpr static int MESSAGE_MIN_HEIGHT = 10;
 
+            constexpr static int REF_GAP = 10;
+
             bool pending = true;
             double accuTime = 0.0;
 
@@ -278,12 +329,15 @@ class FriendChatBoard: public Widget
             LayoutBoard    message;
             ShapeClipBoard background;
 
+            ChatItemRef * const msgref = nullptr;
+
             ChatItem(dir8_t,
                     int,
                     int,
 
                     bool,
 
+                    const char8_t *,
                     const char8_t *,
                     const char8_t *,
 
@@ -490,8 +544,8 @@ class FriendChatBoard: public Widget
             Widget canvas;
             ChatPreviewPage(Widget::VarDir,
 
-                    Widget::VarOffset,
-                    Widget::VarOffset,
+                    Widget::VarOff,
+                    Widget::VarOff,
 
                     Widget * = nullptr,
                     bool     = false);
@@ -624,5 +678,12 @@ class FriendChatBoard: public Widget
         void addFriendListChatPeer(const SDChatPeerID &);
 
     public:
-        void requestAddFriend(const SDChatPeer &, bool);
+        void requestAddFriend      (const SDChatPeer &, bool);
+        void requestAcceptAddFriend(const SDChatPeer &);
+        void requestRejectAddFriend(const SDChatPeer &);
+        void requestBlockPlayer    (const SDChatPeer &);
+
+    public:
+        void onAddFriendAccepted(const SDChatPeer &);
+        void onAddFriendRejected(const SDChatPeer &);
 };

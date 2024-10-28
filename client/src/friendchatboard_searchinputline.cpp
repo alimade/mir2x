@@ -8,8 +8,8 @@ extern PNGTexDB *g_progUseDB;
 
 FriendChatBoard::SearchInputLine::SearchInputLine(Widget::VarDir argDir,
 
-        Widget::VarOffset argX,
-        Widget::VarOffset argY,
+        Widget::VarOff argX,
+        Widget::VarOff argY,
 
         Widget *argParent,
         bool    argAutoDelete)

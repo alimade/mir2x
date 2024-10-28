@@ -185,6 +185,9 @@ class Player final: public BattleObject
         void net_CM_ACTION                    (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_BUY                       (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_ADDFRIEND                 (uint8_t, const uint8_t *, size_t, uint64_t);
+        void net_CM_ACCEPTADDFRIEND           (uint8_t, const uint8_t *, size_t, uint64_t);
+        void net_CM_REJECTADDFRIEND           (uint8_t, const uint8_t *, size_t, uint64_t);
+        void net_CM_BLOCKPLAYER               (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_CHATMESSAGE               (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_CONSUMEITEM               (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_DROPITEM                  (uint8_t, const uint8_t *, size_t, uint64_t);
@@ -196,7 +199,7 @@ class Player final: public BattleObject
         void net_CM_QUERYGOLD                 (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_QUERYPLAYERNAME           (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_QUERYPLAYERWLDESP         (uint8_t, const uint8_t *, size_t, uint64_t);
-        void net_CM_QUERYCHATPEERLIST            (uint8_t, const uint8_t *, size_t, uint64_t);
+        void net_CM_QUERYCHATPEERLIST         (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_QUERYSELLITEMLIST         (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_QUERYUIDBUFF              (uint8_t, const uint8_t *, size_t, uint64_t);
         void net_CM_REQUESTADDEXP             (uint8_t, const uint8_t *, size_t, uint64_t);
@@ -334,7 +337,7 @@ class Player final: public BattleObject
         void dbRemoveInventoryItem(uint32_t, uint32_t);
 
     private:
-        std::tuple<uint64_t, uint64_t> dbSaveChatMessage(const SDChatPeerID &, const std::string_view &);
+        static std::tuple<uint64_t, uint64_t> dbSaveChatMessage(const SDChatPeerID &, const SDChatPeerID &, const std::string_view &);
         SDChatMessageList dbRetrieveLatestChatMessage(const std::span<const uint64_t> &, size_t, bool, bool);
 
     private:
@@ -354,7 +357,7 @@ class Player final: public BattleObject
 
     private:
         void dbLoadPlayerConfig();
-        std::optional<SDChatPeer> dbLoadChatPeer(bool, uint32_t);
+        std::optional<SDChatPeer> dbLoadChatPeer(uint64_t);
         std::vector<uint32_t> dbLoadChatGroupMemberList(uint32_t);
         SDChatPeerList dbQueryChatPeerList(const std::string &, bool, bool);
 
@@ -370,8 +373,19 @@ class Player final: public BattleObject
         void dbAddMagicExp(uint32_t, size_t);
 
     private:
-        SDAddFriendNotif dbAddFriend(uint32_t);
-        SDAddBlockedNotif dbAddBlocked(uint32_t);
+        static bool dbHasPlayer(uint32_t);
+        static SDRuntimeConfig dbGetRuntimeConfig(uint32_t);
+
+    private:
+        static bool dbIsFriend(uint32_t, uint32_t);
+        static bool dbIsBlocked(uint32_t, uint32_t);
+
+    private:
+        static std::string dbGetPlayerName(uint32_t);
+
+    private:
+        static int dbAddFriend(uint32_t, uint32_t);
+        static int dbBlockPlayer(uint32_t, uint32_t);
 
     private:
         SDChatPeer dbCreateChatGroup(const char *, const std::span<const uint32_t> &);

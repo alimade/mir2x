@@ -54,8 +54,8 @@ class RadioSelector: public Widget
     public:
         RadioSelector(Widget::VarDir,
 
-                Widget::VarOffset,
-                Widget::VarOffset,
+                Widget::VarOff,
+                Widget::VarOff,
 
                 int = 5, // gap
                 int = 5, // item space
@@ -101,20 +101,76 @@ class RadioSelector: public Widget
             }
         }
 
+        auto foreachRadioButton(std::invocable<const Widget *> auto f) const
+        {
+            constexpr bool hasBoolResult = std::is_same_v<std::invoke_result_t<decltype(f), const Widget *>, bool>;
+            if constexpr (hasBoolResult){
+                return foreachChild([&f](const Widget *child, bool)
+                {
+                    if(dynamic_cast<const RadioSelector::InternalRadioButton *>(child)){
+                        if(f(child)){
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+            }
+            else{
+                foreachChild([&f](const Widget *child, bool)
+                {
+                    if(dynamic_cast<const RadioSelector::InternalRadioButton *>(child)){
+                        f(child);
+                    }
+                });
+            }
+        }
+
         auto foreachRadioWidget(std::invocable<Widget *> auto f)
         {
             constexpr bool hasBoolResult = std::is_same_v<std::invoke_result_t<decltype(f), Widget *>, bool>;
             if constexpr (hasBoolResult){
                 return foreachRadioButton([&f](Widget *button)
                 {
-                    return f(std::any_cast<Widget *>(button->data()));
+                    return f(getRadioWidget(button));
                 });
             }
             else{
                 foreachRadioButton([&f](Widget *button)
                 {
-                    f(std::any_cast<Widget *>(button->data()));
+                    f(getRadioWidget(button));
                 });
             }
+        }
+
+        auto foreachRadioWidget(std::invocable<const Widget *> auto f) const
+        {
+            constexpr bool hasBoolResult = std::is_same_v<std::invoke_result_t<decltype(f), const Widget *>, bool>;
+            if constexpr (hasBoolResult){
+                return foreachRadioButton([&f](const Widget *button)
+                {
+                    return f(getRadioWidget(button));
+                });
+            }
+            else{
+                foreachRadioButton([&f](const Widget *button)
+                {
+                    f(getRadioWidget(button));
+                });
+            }
+        }
+
+    public:
+        static Widget *getRadioWidget(Widget *button)
+        {
+            fflassert(button);
+            fflassert(dynamic_cast<RadioSelector::InternalRadioButton *>(button));
+            return std::any_cast<Widget *>(button->data());
+        }
+
+        static const Widget *getRadioWidget(const Widget *button)
+        {
+            fflassert(button);
+            fflassert(dynamic_cast<const RadioSelector::InternalRadioButton *>(button));
+            return std::any_cast<Widget *>(button->data());
         }
 };

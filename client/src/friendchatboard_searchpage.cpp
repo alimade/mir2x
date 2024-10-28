@@ -11,8 +11,8 @@ extern SDLDevice *g_sdlDevice;
 
 FriendChatBoard::SearchPage::SearchPage(Widget::VarDir argDir,
 
-        Widget::VarOffset argX,
-        Widget::VarOffset argY,
+        Widget::VarOff argX,
+        Widget::VarOff argY,
 
         Widget *argParent,
         bool    argAutoDelete)

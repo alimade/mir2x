@@ -1,50 +1,53 @@
 #pragma once
-#include <initializer_list>
+#include <vector>
 #include <functional>
+#include <initializer_list>
 #include "widget.hpp"
+#include "itembox.hpp"
+#include "marginwrapper.hpp"
+#include "shapeclipboard.hpp"
 
 class MenuBoard: public Widget
 {
     private:
-        const Widget::VarSize m_varW;
+        const int m_itemSpace;
+        const int m_separatorSpace;
 
     private:
-        const int m_itemSpace;
-        const int m_seperatorSpace;
+        std::vector<Widget *> m_itemList;
 
     private:
         std::function<void(Widget *)> m_onClickMenu;
 
     private:
-        const std::array<int, 4> m_margin;
+        ItemBox m_canvas; // holding all menu items
+        MarginWrapper m_wrapper;
+
+    private:
+        ShapeClipBoard m_background;
+        ShapeClipBoard m_frame;
 
     public:
-        MenuBoard(dir8_t,
-                int,
-                int,
+        MenuBoard(
+                Widget::VarDir,
+                Widget::VarOff,
+                Widget::VarOff,
 
                 Widget::VarSize,
-
-                int,
-                int,
-
-                std::initializer_list<std::pair<Widget *, bool>>,
-                std::function<void(Widget *)> = nullptr,
-
                 std::array<int, 4> = {},
+
+                int = 0,
+                int = 0,
+
+                std::initializer_list<std::tuple<Widget *, bool, bool>> = {},
+                std::function<void(Widget *)> = nullptr,
 
                 Widget * = nullptr,
                 bool     = false);
 
     public:
-        void addChild(Widget *, bool) override;
+        void appendMenu(Widget *, bool, bool);
 
-    public:
-        void drawEx(int, int, int, int, int, int) const override;
-
-    public:
-        bool processEvent(const SDL_Event &, bool) override;
-
-    public:
-        static Widget *getSeparator();
+    // public:
+    //     bool processEvent(const SDL_Event &, bool) override;
 };

@@ -368,9 +368,10 @@ enum TeamErrorType: int
 
 enum AddFriendResultType: int
 {
-    AF_NONE     = 0,
-    AF_BEGIN    = 1,
-    AF_INVALID  = 1,    // invalid dbid
+    AF_NONE    = -1,
+    AF_BEGIN   =  0,
+    AF_INVALID =  0,    // invalid dbid
+    AF_BLOCKED,         // in blacklist
     AF_ACCEPTED,        // manually/automatically accepted
     AF_REJECTED,        // manually/automatically rejected
     AF_PENDING,         // waiting response
@@ -378,14 +379,24 @@ enum AddFriendResultType: int
     AF_END,
 };
 
-enum AddBlockedResultType: int
+enum FriendRespondType: int
 {
-    AB_NONE    = 0,
-    AB_BEGIN   = 1,
-    AB_INVALID = 1,
-    AB_DONE,
-    AB_EXIST,           // has already been in blacklist
-    AB_END,
+    FR_NONE   = -1,
+    FR_BEGIN  =  0,
+    FR_ACCEPT =  0,
+    FR_REJECT,
+    FR_VERIFY,
+    FR_END,
+};
+
+enum BlockPlayerResultType: int
+{
+    BP_NONE    = 0,
+    BP_BEGIN   = 1,
+    BP_INVALID = 1,
+    BP_DONE,
+    BP_EXIST,   // has already been in blacklist
+    BP_END,
 };
 
 enum ChatPeerType: int

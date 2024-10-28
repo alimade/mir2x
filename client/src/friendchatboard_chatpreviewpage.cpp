@@ -2,8 +2,8 @@
 
 FriendChatBoard::ChatPreviewPage::ChatPreviewPage(Widget::VarDir argDir,
 
-        Widget::VarOffset argX,
-        Widget::VarOffset argY,
+        Widget::VarOff argX,
+        Widget::VarOff argY,
 
         Widget *argParent,
         bool    argAutoDelete)

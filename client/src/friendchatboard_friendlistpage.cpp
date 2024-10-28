@@ -7,8 +7,8 @@ extern PNGTexDB *g_progUseDB;
 
 FriendChatBoard::FriendListPage::FriendListPage(Widget::VarDir argDir,
 
-        Widget::VarOffset argX,
-        Widget::VarOffset argY,
+        Widget::VarOff argX,
+        Widget::VarOff argY,
 
         Widget *argParent,
         bool    argAutoDelete)
@@ -45,7 +45,7 @@ FriendChatBoard::FriendListPage::FriendListPage(Widget::VarDir argDir,
 
 void FriendChatBoard::FriendListPage::append(const SDChatPeer &peer, std::function<void(FriendChatBoard::FriendItem *)> argOnClick, std::pair<Widget *, bool> argFuncWidget)
 {
-    canvas.addChild(DIR_UPLEFT, 0, canvas.h(), new FriendItem
+    canvas.addChild(new FriendItem
     {
         DIR_UPLEFT,
         0,
@@ -65,5 +65,5 @@ void FriendChatBoard::FriendListPage::append(const SDChatPeer &peer, std::functi
         std::move(argFuncWidget),
     },
 
-    true);
+    DIR_UPLEFT, 0, canvas.h(), true);
 }
