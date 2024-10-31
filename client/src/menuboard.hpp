@@ -3,7 +3,7 @@
 #include <functional>
 #include <initializer_list>
 #include "widget.hpp"
-#include "itembox.hpp"
+#include "itemflex.hpp"
 #include "marginwrapper.hpp"
 #include "shapeclipboard.hpp"
 
@@ -14,13 +14,13 @@ class MenuBoard: public Widget
         const int m_separatorSpace;
 
     private:
-        std::vector<Widget *> m_itemList;
+        std::vector<std::pair<Widget *, bool>> m_itemList;
 
     private:
         std::function<void(Widget *)> m_onClickMenu;
 
     private:
-        ItemBox m_canvas; // holding all menu items
+        ItemFlex m_canvas; // holding all menu items
         MarginWrapper m_wrapper;
 
     private:
@@ -45,9 +45,13 @@ class MenuBoard: public Widget
                 Widget * = nullptr,
                 bool     = false);
 
+    private:
+        int upperItemSpace(const Widget *) const; // separator space not included
+        int lowerItemSpace(const Widget *) const; // ...
+
     public:
         void appendMenu(Widget *, bool, bool);
 
-    // public:
-    //     bool processEvent(const SDL_Event &, bool) override;
+    public:
+        bool processEventDefault(const SDL_Event &, bool) override;
 };

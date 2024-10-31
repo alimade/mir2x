@@ -318,23 +318,23 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        static bool hasIntOffset(const Widget::VarOff &varOff)
+        static bool hasIntOff(const Widget::VarOff &varOff)
         {
             return varOff.index() == 0;
         }
 
-        static bool hasFuncOffset(const Widget::VarOff &varOff)
+        static bool hasFuncOff(const Widget::VarOff &varOff)
         {
             return varOff.index() == 1;
         }
 
-        static int  asIntOffset(const Widget::VarOff &varOff) { return std::get<int>(varOff); }
-        static int &asIntOffset(      Widget::VarOff &varOff) { return std::get<int>(varOff); }
+        static int  asIntOff(const Widget::VarOff &varOff) { return std::get<int>(varOff); }
+        static int &asIntOff(      Widget::VarOff &varOff) { return std::get<int>(varOff); }
 
-        static const std::function<int(const Widget *)> &asFuncOffset(const Widget::VarOff &varOff) { return std::get<std::function<int(const Widget *)>>(varOff); }
-        static       std::function<int(const Widget *)> &asFuncOffset(      Widget::VarOff &varOff) { return std::get<std::function<int(const Widget *)>>(varOff); }
+        static const std::function<int(const Widget *)> &asFuncOff(const Widget::VarOff &varOff) { return std::get<std::function<int(const Widget *)>>(varOff); }
+        static       std::function<int(const Widget *)> &asFuncOff(      Widget::VarOff &varOff) { return std::get<std::function<int(const Widget *)>>(varOff); }
 
-        static int evalOffset(const Widget::VarOff &varOffset, const Widget *widgetPtr)
+        static int evalOff(const Widget::VarOff &varOffset, const Widget *widgetPtr)
         {
             return std::visit(VarDispatcher
             {
@@ -454,6 +454,9 @@ class Widget: public WidgetTreeNode
         mutable bool m_hCalc = false;
         mutable bool m_wCalc = false;
 
+    private:
+        std::function<bool(Widget *, const SDL_Event &, bool)> m_processEventHandler;
+
     public:
         Widget(Widget::VarDir argDir,
 
@@ -479,8 +482,8 @@ class Widget: public WidgetTreeNode
             // because it may refers to sub-widget which has not be initialized yet
 
             if(Widget::hasFuncDir   (m_dir      )){ fflassert(Widget::asFuncDir   (m_dir      ), m_dir      ); }
-            if(Widget::hasFuncOffset(m_x.first  )){ fflassert(Widget::asFuncOffset(m_x.first  ), m_x.first  ); }
-            if(Widget::hasFuncOffset(m_y.first  )){ fflassert(Widget::asFuncOffset(m_y.first  ), m_y.first  ); }
+            if(Widget::hasFuncOff(m_x.first  )){ fflassert(Widget::asFuncOff(m_x.first  ), m_x.first  ); }
+            if(Widget::hasFuncOff(m_y.first  )){ fflassert(Widget::asFuncOff(m_y.first  ), m_y.first  ); }
             if(Widget::hasFuncSize  (m_w        )){ fflassert(Widget::asFuncSize  (m_w        ), m_w        ); }
             if(Widget::hasFuncSize  (m_h        )){ fflassert(Widget::asFuncSize  (m_h        ), m_h        ); }
 
@@ -618,10 +621,21 @@ class Widget: public WidgetTreeNode
         }
 
     public:
+        virtual bool processEvent(const SDL_Event &event, bool valid) final
+        {
+            if(m_processEventHandler){
+                return m_processEventHandler(this, event, valid);
+            }
+            else{
+                return processEventDefault(event, valid);
+            }
+        }
+
+    protected:
         //  valid: this event has been consumed by other widget
         // return: does current widget take this event?
         //         always return false if given event has been take by previous widget
-        virtual bool processEvent(const SDL_Event &event, bool valid)
+        virtual bool processEventDefault(const SDL_Event &event, bool valid)
         {
             // this function alters the draw order
             // if a widget has children having overlapping then be careful
@@ -633,18 +647,32 @@ class Widget: public WidgetTreeNode
             bool took = false;
             uint64_t focusedWidgetID = 0;
 
-            foreachChild(false, [&event, valid, &took, &focusedWidgetID](Widget *widget, bool)
+            foreachChild(false, [&event, valid, &took, &focusedWidgetID, this](Widget *widget, bool)
             {
                 if(widget->show()){
-                    took |= widget->processEvent(event, valid && !took);
+                    const bool validEvent = valid && !took;
+                    const bool takenEvent = widget->processEvent(event, validEvent);
+
+                    if(!validEvent && takenEvent){
+                        throw fflerror("widget %s takes invalid event", widget->name());
+                    }
+
+                    if(validEvent && takenEvent && !widget->focus()){
+                        throw fflerror("widget %s takes event but doesn't get focus", widget->name());
+                    }
+
                     if(widget->focus()){
                         if(focusedWidgetID){
-                            throw fflerror("multiple widget focused by one event");
+                            if(auto focusedWidget = hasChild(focusedWidgetID); focusedWidget && focusedWidget->focus()){
+                                // a widget with focus can drop events
+                                // i.e. a focused slider ignores mouse motion if button released
+                                focusedWidget->setFocus(false);
+                            }
                         }
-                        else{
-                            focusedWidgetID = widget->id();
-                        }
+                        focusedWidgetID = widget->id();
                     }
+
+                    took |= takenEvent;
                 }
             });
 
@@ -656,16 +684,6 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        static void handleEvent(const SDL_Event &event, bool &valid, std::initializer_list<Widget *> widgetList)
-        {
-            bool tookEvent = false;
-            for(auto &w: widgetList){
-                tookEvent |= w->processEvent(event, valid && !tookEvent);
-            }
-            valid = valid && !tookEvent;
-        }
-
-    public:
         virtual dir8_t dir() const
         {
             return Widget::evalDir(m_dir, this);
@@ -673,12 +691,12 @@ class Widget: public WidgetTreeNode
 
         virtual int x() const
         {
-            return Widget::evalOffset(m_x.first, this) + m_x.second + (m_parent ? m_parent->x() : 0) - xSizeOff(dir(), w());
+            return Widget::evalOff(m_x.first, this) + m_x.second + (m_parent ? m_parent->x() : 0) - xSizeOff(dir(), w());
         }
 
         virtual int y() const
         {
-            return Widget::evalOffset(m_y.first, this) + m_y.second + (m_parent ? m_parent->y() : 0) - ySizeOff(dir(), h());
+            return Widget::evalOff(m_y.first, this) + m_y.second + (m_parent ? m_parent->y() : 0) - ySizeOff(dir(), h());
         }
 
         virtual int w() const
@@ -747,8 +765,12 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        virtual int dx() const { return Widget::evalOffset(m_x.first, this) + m_x.second - xSizeOff(dir(), w()); }
-        virtual int dy() const { return Widget::evalOffset(m_y.first, this) + m_y.second - ySizeOff(dir(), h()); }
+        const auto &varw() const { return m_w; }
+        const auto &varh() const { return m_h; }
+
+    public:
+        virtual int dx() const { return Widget::evalOff(m_x.first, this) + m_x.second - xSizeOff(dir(), w()); }
+        virtual int dy() const { return Widget::evalOff(m_y.first, this) + m_y.second - ySizeOff(dir(), h()); }
 
     public:
         std::any &data()
@@ -774,7 +796,7 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        virtual void setFocus(bool argFocus)
+        virtual Widget *setFocus(bool argFocus)
         {
             foreachChild([](Widget * widget, bool)
             {
@@ -782,6 +804,7 @@ class Widget: public WidgetTreeNode
             });
 
             m_focus = argFocus;
+            return this;
         }
 
         virtual bool focus() const
@@ -853,9 +876,10 @@ class Widget: public WidgetTreeNode
         const Widget *focusedChild() const { if(firstChild() && firstChild()->focus()){ return firstChild(); } return nullptr; }
 
     public:
-        void setShow(Widget::VarFlag argShow)
+        Widget *setShow(Widget::VarFlag argShow)
         {
             m_show = std::make_pair(std::move(argShow), false);
+            return this;
         }
 
         bool show() const
@@ -896,9 +920,10 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        void setActive(Widget::VarFlag argActive)
+        Widget *setActive(Widget::VarFlag argActive)
         {
             m_active = std::make_pair(std::move(argActive), false);
+            return this;
         }
 
         bool active() const
@@ -919,17 +944,17 @@ class Widget: public WidgetTreeNode
         {
             const auto fnOp = [](std::pair<Widget::VarOff, int> &offset, Widget::VarOff update)
             {
-                if(Widget::hasIntOffset(update)){
-                    offset.second += Widget::asIntOffset(update);
+                if(Widget::hasIntOff(update)){
+                    offset.second += Widget::asIntOff(update);
                 }
-                else if(Widget::hasIntOffset(offset.first)){
-                    offset.second += Widget::asIntOffset(offset.first);
+                else if(Widget::hasIntOff(offset.first)){
+                    offset.second += Widget::asIntOff(offset.first);
                     offset.first   = std::move(update);
                 }
                 else{
                     offset.first = [u = std::move(offset.first), v = std::move(update)](const Widget *widgetPtr)
                     {
-                        return Widget::asFuncOffset(u)(widgetPtr) + Widget::asFuncOffset(v)(widgetPtr);
+                        return Widget::asFuncOff(u)(widgetPtr) + Widget::asFuncOff(v)(widgetPtr);
                     };
                 }
             };
@@ -957,13 +982,21 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        void setW(Widget::VarSize argSize) { m_w = std::move(argSize); }
-        void setH(Widget::VarSize argSize) { m_h = std::move(argSize); }
+        Widget *setW(Widget::VarSize argSize) { m_w = std::move(argSize); return this; }
+        Widget *setH(Widget::VarSize argSize) { m_h = std::move(argSize); return this; }
 
     public:
-        void setSize(Widget::VarSize argW, Widget::VarSize argH)
+        Widget *setSize(Widget::VarSize argW, Widget::VarSize argH)
         {
             m_w = std::move(argW);
             m_h = std::move(argH);
+            return this;
+        }
+
+    public:
+        Widget *setProcessEvent(std::function<bool(Widget *, const SDL_Event &, bool)> argHandler)
+        {
+            m_processEventHandler = std::move(argHandler);
+            return this;
         }
 };

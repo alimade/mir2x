@@ -321,11 +321,15 @@ RuntimeConfigBoard::PullMenu::PullMenu(
           0,
           0,
 
-          {},
-          {10, 10, 10, 10},
+          [this](const Widget *)
+          {
+              return m_menuTitleCrop.w();
+          },
 
-          10,
-          20,
+          {5, 5, 5, 5},
+
+          6,
+          7,
 
           argMenuList,
           std::move(argOnClickMenu),
@@ -472,7 +476,7 @@ void RuntimeConfigBoard::PullMenu::drawEx(int dstX, int dstY, int srcX, int srcY
     }
 }
 
-bool RuntimeConfigBoard::PullMenu::processEvent(const SDL_Event &event, bool valid)
+bool RuntimeConfigBoard::PullMenu::processEventDefault(const SDL_Event &event, bool valid)
 {
     if(!valid){
         return consumeFocus(false);
@@ -482,7 +486,7 @@ bool RuntimeConfigBoard::PullMenu::processEvent(const SDL_Event &event, bool val
         return consumeFocus(false);
     }
 
-    if(Widget::processEvent(event, valid)){
+    if(Widget::processEventDefault(event, valid)){
         return true;
     }
 
@@ -780,10 +784,10 @@ RuntimeConfigBoard::RuntimeConfigBoard(int argX, int argY, int argW, int argH, P
 
           {
               {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"800×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 800, 600)), false, true},
-              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"960×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 960, 600)), false, true},
-              // {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1024×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1024, 768)), false, true},
+              // {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"960×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 960, 600)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1024×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1024, 768)), false, true},
               // {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×720", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 720)), false, true},
-              // {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 768)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 768)), false, true},
               // {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×800", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 800)), false, true},
           },
 
@@ -1220,7 +1224,7 @@ void RuntimeConfigBoard::drawEx(int dstX, int dstY, int srcX, int srcY, int srcW
     }
 }
 
-bool RuntimeConfigBoard::processEvent(const SDL_Event &event, bool valid)
+bool RuntimeConfigBoard::processEventDefault(const SDL_Event &event, bool valid)
 {
     if(!valid){
         return consumeFocus(false);

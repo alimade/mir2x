@@ -1,8 +1,56 @@
+#include "totype.hpp"
 #include "colorf.hpp"
 #include "sdldevice.hpp"
 #include "menuboard.hpp"
 
 extern SDLDevice *g_sdlDevice;
+struct MenuBoardItem: public Widget
+{
+    using Widget::Widget;
+    bool processEventDefault(const SDL_Event &event, bool valid) override
+    {
+        if(!valid){
+            return consumeFocus(false);
+        }
+
+        Widget *menuWidget = nullptr;
+        ShapeClipBoard *background = nullptr;
+
+        foreachChild([&menuWidget, &background](Widget *child, bool)
+        {
+
+            if(auto p = dynamic_cast<ShapeClipBoard *>(child)){
+                background = p;
+            }
+            else{
+                menuWidget = child;
+            }
+        });
+
+        if(menuWidget->processEvent(event, valid)){
+            return consumeFocus(true, menuWidget);
+        }
+
+        switch(event.type){
+            case SDL_MOUSEMOTION:
+            case SDL_MOUSEBUTTONUP:
+            case SDL_MOUSEBUTTONDOWN:
+                {
+                    const auto [eventX, eventY] = SDLDeviceHelper::getEventPLoc(event).value();
+                    if(background->in(eventX, eventY)){
+                        return consumeFocus(true);
+                    }
+                    else{
+                        return consumeFocus(false);
+                    }
+                }
+            default:
+                {
+                    return false;
+                }
+        }
+    }
+};
 
 MenuBoard::MenuBoard(
         Widget::VarDir argDir,
@@ -128,16 +176,56 @@ MenuBoard::MenuBoard(
     }
 }
 
+int MenuBoard::upperItemSpace(const Widget *argWidget) const
+{
+    const auto p = std::find_if(m_itemList.begin(), m_itemList.end(), [argWidget](const auto &pr)
+    {
+        return pr.first == argWidget;
+    });
+
+    if(p == m_itemList.end()){
+        throw fflerror("can not find child widget: %p", to_cvptr(argWidget));
+    }
+    else if(p == m_itemList.begin()){
+        return 0;
+    }
+    else if(std::prev(p)->second){
+        return 0;
+    }
+    else{
+        return m_itemSpace / 2;
+    }
+}
+
+int MenuBoard::lowerItemSpace(const Widget *argWidget) const
+{
+    const auto p = std::find_if(m_itemList.begin(), m_itemList.end(), [argWidget](const auto &pr)
+    {
+        return pr.first == argWidget;
+    });
+
+    if(p == m_itemList.end()){
+        throw fflerror("can not find child widget: %p", to_cvptr(argWidget));
+    }
+    else if(std::next(p) == m_itemList.end()){
+        return 0;
+    }
+    else if(p->second){
+        return 0; // separator space not included
+    }
+    else{
+        return m_itemSpace - m_itemSpace / 2;
+    }
+}
+
 void MenuBoard::appendMenu(Widget *argWidget, bool argAddSeparator, bool argAutoDelete)
 {
     if(!argWidget){
         return;
     }
 
-    const bool firstMenu = !hasChild();
-
-    m_itemList.push_back(argWidget);
-    m_canvas.appendItem(new Widget
+    m_itemList.emplace_back(argWidget, argAddSeparator);
+    m_canvas.appendItem(new MenuBoardItem
     {
         DIR_UPLEFT, // ignore
         0,
@@ -153,120 +241,79 @@ void MenuBoard::appendMenu(Widget *argWidget, bool argAddSeparator, bool argAuto
                 0,
                 [this](const Widget *)
                 {
+                    if(Widget::hasSize(m_canvas.varw())){
+                        return m_canvas.w();
+                    }
+
                     if(m_itemList.empty()){
                         return 0;
                     }
 
-                    auto maxWPtr = std::max_element(m_itemList.begin(), m_itemList.end(), [](const auto &item1, const auto &item2)
+                    auto foundIter = std::max_element(m_itemList.begin(), m_itemList.end(), [](const auto &item1, const auto &item2)
                     {
-                        return item1->w() < item2->w();
+                        return item1.first->w() < item2.first->w();
                     });
 
-                    return (*maxWPtr)->w();
+                    return foundIter->first->w();
                 },
 
-                [argWidget, argAddSeparator, firstMenu, this](const Widget *)
+                [argWidget, argAddSeparator, this](const Widget *)
                 {
-                    return (firstMenu ? 0 : m_itemSpace / 2) + argWidget->h() + (argAddSeparator ? m_separatorSpace : (m_itemSpace - m_itemSpace / 2));
+                    return upperItemSpace(argWidget) + argWidget->h() + lowerItemSpace(argWidget) + (argAddSeparator ? m_separatorSpace : 0);
                 },
 
-                [argWidget, argAddSeparator, firstMenu, this](const Widget *self, int drawDstX, int drawDstY)
+                [argWidget, argAddSeparator, this](const Widget *self, int drawDstX, int drawDstY)
                 {
-                    g_sdlDevice->fillRectangle(colorf::WHITE + colorf::A_SHF(100), drawDstX, drawDstY + (firstMenu ? 0 : m_itemSpace / 2), self->w(), argWidget->h());
+                    if(self->parent()->focus()){
+                        g_sdlDevice->fillRectangle(colorf::WHITE + colorf::A_SHF(100), drawDstX, drawDstY + upperItemSpace(argWidget), self->w(), argWidget->h());
+                    }
+
                     if(argAddSeparator){
                         const int xOff = 2;
                         const int drawXOff = (self->w() > xOff * 2) ? xOff : 0;
 
                         const int drawXStart = drawDstX + drawXOff;
                         const int drawXEnd   = drawDstX + self->w() - drawXOff;
-                        const int drawY      = drawDstY + (firstMenu ? 0 : m_itemSpace / 2) + argWidget->h() + m_separatorSpace / 2;
+                        const int drawY      = drawDstY + upperItemSpace(argWidget) + argWidget->h() + m_separatorSpace / 2;
 
                         g_sdlDevice->drawLine(colorf::WHITE + colorf::A_SHF(100), drawXStart, drawY, drawXEnd, drawY);
                     }
                 },
-            },
+            }, DIR_UPLEFT, 0, 0, true},
 
-            DIR_UPLEFT, 0, 0, true},
-
-            {argWidget, DIR_UPLEFT, 0, firstMenu ? 0 : m_itemSpace / 2, argAutoDelete},
+            {argWidget, DIR_UPLEFT, 0, [argWidget, this](const Widget *)
+            {
+                return upperItemSpace(argWidget);
+            }, argAutoDelete},
         },
     },
 
     true);
 }
 
-// bool MenuBoard::processEvent(const SDL_Event &event, bool valid)
-// {
-//     if(!valid){
-//         return consumeFocus(false);
-//     }
-//
-//     if(!show()){
-//         return consumeFocus(false);
-//     }
-//
-//     if(Widget::processEvent(event, valid)){
-//         if(event.type == SDL_MOUSEBUTTONDOWN){
-//             if(auto p = focusedChild()){
-//                 if(m_onClickMenu){
-//                     m_onClickMenu(p);
-//                 }
-//
-//                 setShow(false);
-//                 setFocus(false);
-//             }
-//         }
-//         return true;
-//     }
-//
-//     switch(event.type){
-//         case SDL_MOUSEMOTION:
-//         case SDL_MOUSEBUTTONUP:
-//         case SDL_MOUSEBUTTONDOWN:
-//             {
-//                 const auto [eventX, eventY] = SDLDeviceHelper::getEventPLoc(event).value();
-//                 if(!in(eventX, eventY)){
-//                     setFocus(false);
-//                     return event.type == SDL_MOUSEMOTION;
-//                 }
-//
-//                 // event drops into margin
-//                 // we should drop focus but still consume the event
-//
-//                 if(!mathf::pointInRectangle<int>(
-//                             eventX,
-//                             eventY,
-//
-//                             x() + m_margin[2],
-//                             y() + m_margin[0],
-//
-//                             w() - m_margin[2] - m_margin[3],
-//                             h() - m_margin[0] - m_margin[1])){
-//                     return !consumeFocus(false);
-//                 }
-//
-//                 return foreachChild([&event, eventX, eventY, this](Widget *widget, bool)
-//                 {
-//                     if(mathf::pointInRectangle(eventX, eventY, widget->x(), widget->y() - m_itemSpace / 2, w() - m_margin[2] - m_margin[3], widget->h() + m_itemSpace)){
-//                         if(event.type == SDL_MOUSEBUTTONDOWN){
-//                             if(m_onClickMenu){
-//                                 m_onClickMenu(widget);
-//                             }
-//
-//                             setShow(false);
-//                             setFocus(false);
-//                         }
-//                         else{
-//                             consumeFocus(true, widget);
-//                         }
-//                         return true;
-//                     }
-//                     return false;
-//                 });
-//             }
-//         default:
-//             {
-//                 return false;
-//             }
-//     }
-// }
+bool MenuBoard::processEventDefault(const SDL_Event &event, bool valid)
+{
+    if(!valid){
+        return consumeFocus(false);
+    }
+
+    if(!show()){
+        return consumeFocus(false);
+    }
+
+    if(Widget::processEventDefault(event, valid)){
+        if(event.type == SDL_MOUSEBUTTONDOWN){
+            if(auto p = focusedChild()){
+                if(m_onClickMenu){
+                    m_onClickMenu(p);
+                }
+
+                setShow(false);
+                setFocus(false);
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
