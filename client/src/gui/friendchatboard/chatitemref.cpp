@@ -1,12 +1,14 @@
 #include "sdldevice.hpp"
 #include "processrun.hpp"
-#include "friendchatboard.hpp"
+#include "chatitemref.hpp"
 
 extern SDLDevice *g_sdlDevice;
 
-FriendChatBoard::ChatItemRef::ChatItemRef(dir8_t argDir,
-        int argX,
-        int argY,
+ChatItemRef::ChatItemRef(
+        Widget::VarDir argDir,
+        Widget::VarOff argX,
+        Widget::VarOff argY,
+
         int argMaxWidth,
 
         bool argForceWidth,
@@ -19,9 +21,9 @@ FriendChatBoard::ChatItemRef::ChatItemRef(dir8_t argDir,
 
     : Widget
       {
-          argDir,
-          argX,
-          argY,
+          std::move(argDir),
+          std::move(argX),
+          std::move(argY),
           0, // setup later
           0, //
 
@@ -31,7 +33,8 @@ FriendChatBoard::ChatItemRef::ChatItemRef(dir8_t argDir,
           argAutoDelete,
       }
 
-    , background
+    , m_crossBgColor(colorf::GREY + colorf::A_SHF(255))
+    , m_background
       {
           DIR_UPLEFT,
           0,
@@ -48,65 +51,65 @@ FriendChatBoard::ChatItemRef::ChatItemRef(dir8_t argDir,
           false,
       }
 
-    , cross
+    , m_cross
       {
           DIR_UPLEFT, // ignored
           0,
           0,
 
-          u8"x",
+          u8"×", // multiplication sign for better symmetry
 
           1,
-          12,
+          ChatItemRef::CROSS_FONT_SIZES[0],
           0,
 
           colorf::WHITE + colorf::A_SHF(255),
       }
 
-    , crossBg
+    , m_crossBg
       {
           DIR_UPLEFT, // ignored
           0,
           0,
 
-          ChatItemRef::BUTTON_R * 2 + 1,
-          ChatItemRef::BUTTON_R * 2 + 1,
+          ChatItemRef::BUTTON_D,
+          ChatItemRef::BUTTON_D,
 
-          [](const Widget *, int drawDstX, int drawDstY)
+          [this](const Widget *, int drawDstX, int drawDstY)
           {
               if(auto texPtr = g_sdlDevice->getCover(ChatItemRef::BUTTON_R, 360)){
-                  SDLDeviceHelper::EnableRenderBlendMode enableBlendMode(SDL_BLENDMODE_BLEND);
-                  SDLDeviceHelper::EnableTextureModColor enableModColor(texPtr, colorf::GREY + colorf::A_SHF(255));
+                  const SDLDeviceHelper::EnableRenderBlendMode enableBlendMode(SDL_BLENDMODE_BLEND);
+                  const SDLDeviceHelper::EnableTextureModColor enableModColor(texPtr, m_crossBgColor);
                   g_sdlDevice->drawTexture(texPtr, drawDstX, drawDstY);
               }
           },
       }
 
-    , crossButtonGfx
+    , m_crossButtonGfx
       {
           DIR_UPLEFT,
           0,
           0,
 
-          ChatItemRef::BUTTON_R * 2 + 1,
-          ChatItemRef::BUTTON_R * 2 + 1,
+          [this](const Widget *){ return m_crossBg.w(); },
+          [this](const Widget *){ return m_crossBg.h(); },
 
           {
-              {&crossBg, DIR_NONE, ChatItemRef::BUTTON_R, ChatItemRef::BUTTON_R, false},
-              {&cross  , DIR_NONE, ChatItemRef::BUTTON_R, ChatItemRef::BUTTON_R, false},
+              {&m_crossBg, DIR_NONE, [this](const Widget *){ return m_crossButtonGfx.w() / 2; }, [this](const Widget *){ return m_crossButtonGfx.h() / 2; }, false},
+              {&m_cross  , DIR_NONE, [this](const Widget *){ return m_crossButtonGfx.w() / 2; }, [this](const Widget *){ return m_crossButtonGfx.h() / 2; }, false},
           },
       }
 
-    , crossButton
+    , m_crossButton
       {
           DIR_RIGHT,
-          [this](const Widget *){ return w() - ChatItemRef::MARGIN - 1; },
-          [this](const Widget *){ return h() / 2;                       },
+          [this](const Widget *){ return w() - ChatItemRef::BUTTON_MARGIN - 1; },
+          [this](const Widget *){ return h() / 2;                              },
 
           {
-              &crossButtonGfx,
-              &crossButtonGfx,
-              &crossButtonGfx,
+              &m_crossButtonGfx,
+              &m_crossButtonGfx,
+              &m_crossButtonGfx,
           },
 
           {
@@ -117,12 +120,23 @@ FriendChatBoard::ChatItemRef::ChatItemRef(dir8_t argDir,
 
           [this](Widget *)
           {
-              cross.setFont(10);
+              m_crossBgColor = colorf::BLUE + colorf::A_SHF(64);
+              m_cross.setFontSize(ChatItemRef::CROSS_FONT_SIZES[1]);
           },
 
           [this](Widget *)
           {
-              cross.setFont(12);
+              m_crossBgColor = colorf::GREY + colorf::A_SHF(255);
+              m_cross.setFontSize(ChatItemRef::CROSS_FONT_SIZES[0]);
+          },
+
+          [this](Widget *, bool clickDone)
+          {
+              if(clickDone){
+              }
+              else{
+                  m_cross.setFontSize(ChatItemRef::CROSS_FONT_SIZES[2]);
+              }
           },
 
           [this](Widget *)
@@ -142,13 +156,13 @@ FriendChatBoard::ChatItemRef::ChatItemRef(dir8_t argDir,
           false,
       }
 
-    , message
+    , m_message
       {
           DIR_UPLEFT,
           ChatItemRef::MARGIN,
           ChatItemRef::MARGIN,
 
-          std::max<int>(1, argShowButton ? (argMaxWidth - ChatItemRef::MARGIN - ChatItemRef::BUTTON_MARGIN * 2 - ChatItemRef::BUTTON_R * 2 - 1)
+          std::max<int>(1, argShowButton ? (argMaxWidth - ChatItemRef::MARGIN - ChatItemRef::BUTTON_MARGIN * 2 - ChatItemRef::BUTTON_D)
                                          : (argMaxWidth - ChatItemRef::MARGIN * 2)),
           argLayoutXML.c_str(),
           0,
@@ -181,7 +195,7 @@ FriendChatBoard::ChatItemRef::ChatItemRef(dir8_t argDir,
           false,
       }
 {
-    crossButton.setShow(argShowButton);
+    m_crossButton.setShow(argShowButton);
 
     if(argForceWidth){
         setW(std::max<int>(0, argMaxWidth));
@@ -190,16 +204,16 @@ FriendChatBoard::ChatItemRef::ChatItemRef(dir8_t argDir,
         setW([argShowButton, this](const Widget *)
         {
             if(argShowButton){
-                return ChatItemRef::MARGIN + message.w() + ChatItemRef::BUTTON_MARGIN * 2 + ChatItemRef::BUTTON_R * 2 + 1;
+                return ChatItemRef::MARGIN + m_message.w() + ChatItemRef::BUTTON_MARGIN * 2 + ChatItemRef::BUTTON_D;
             }
             else{
-                return ChatItemRef::MARGIN * 2 + message.w();
+                return ChatItemRef::MARGIN * 2 + m_message.w();
             }
         });
     }
 
     setH([this](const Widget *)
     {
-        return std::max<int>(ChatItemRef::MARGIN * 2 + message.h(), ChatItemRef::BUTTON_R * 2 + 1);
+        return std::max<int>(ChatItemRef::MARGIN * 2 + m_message.h(), ChatItemRef::BUTTON_D);
     });
 }

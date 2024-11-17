@@ -99,6 +99,7 @@ QuestStateBoard::QuestStateBoard(int argX, int argY, ProcessRun *runPtr, Widget 
           nullptr,
           nullptr,
           nullptr,
+          nullptr,
 
           0,
           0,
@@ -127,6 +128,7 @@ QuestStateBoard::QuestStateBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
           nullptr,
           nullptr,
+          nullptr,
           [this](Widget *)
           {
               setShow(false);
@@ -148,7 +150,7 @@ QuestStateBoard::QuestStateBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 {
     setShow(false);
     if(auto texPtr = g_progUseDB->retrieve(0X00000350)){
-        std::tie(m_w, m_h) = SDLDeviceHelper::getTextureSize(texPtr);
+        setSize(SDLDeviceHelper::getTextureWidth(texPtr), SDLDeviceHelper::getTextureHeight(texPtr));
     }
     else{
         throw fflerror("no valid quest status board frame texture");

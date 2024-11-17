@@ -43,6 +43,7 @@ MiniMapBoard::MiniMapBoard(ProcessRun *runPtr, Widget *parent, bool autoDelete)
 
           nullptr,
           nullptr,
+          nullptr,
           [this](Widget *)
           {
               m_alphaOn = !m_alphaOn;
@@ -83,6 +84,7 @@ MiniMapBoard::MiniMapBoard(ProcessRun *runPtr, Widget *parent, bool autoDelete)
               0X01020000 + 105,
           },
 
+          nullptr,
           nullptr,
           nullptr,
           [this](Widget *)
@@ -171,8 +173,7 @@ void MiniMapBoard::flipExtended()
 void MiniMapBoard::setPLoc()
 {
     const int size = getFrameSize();
-    m_w = size;
-    m_h = size;
+    setSize(size, size);
 
     moveTo(g_sdlDevice->getRendererWidth() - w(), 0);
 

@@ -446,7 +446,7 @@ class Widget: public WidgetTreeNode
         std::pair<Widget::VarOff, int> m_x;
         std::pair<Widget::VarOff, int> m_y;
 
-    protected:
+    private:
         Widget::VarSize m_w;
         Widget::VarSize m_h;
 
@@ -481,11 +481,11 @@ class Widget: public WidgetTreeNode
             // don't check if w/h is a function
             // because it may refers to sub-widget which has not be initialized yet
 
-            if(Widget::hasFuncDir   (m_dir      )){ fflassert(Widget::asFuncDir   (m_dir      ), m_dir      ); }
-            if(Widget::hasFuncOff(m_x.first  )){ fflassert(Widget::asFuncOff(m_x.first  ), m_x.first  ); }
-            if(Widget::hasFuncOff(m_y.first  )){ fflassert(Widget::asFuncOff(m_y.first  ), m_y.first  ); }
-            if(Widget::hasFuncSize  (m_w        )){ fflassert(Widget::asFuncSize  (m_w        ), m_w        ); }
-            if(Widget::hasFuncSize  (m_h        )){ fflassert(Widget::asFuncSize  (m_h        ), m_h        ); }
+            if(Widget::hasFuncDir (m_dir      )){ fflassert(Widget::asFuncDir (m_dir      ), m_dir      ); }
+            if(Widget::hasFuncOff (m_x.first  )){ fflassert(Widget::asFuncOff (m_x.first  ), m_x.first  ); }
+            if(Widget::hasFuncOff (m_y.first  )){ fflassert(Widget::asFuncOff (m_y.first  ), m_y.first  ); }
+            if(Widget::hasFuncSize(m_w        )){ fflassert(Widget::asFuncSize(m_w        ), m_w        ); }
+            if(Widget::hasFuncSize(m_h        )){ fflassert(Widget::asFuncSize(m_h        ), m_h        ); }
 
             if(Widget::hasIntSize(m_w)){ fflassert(Widget::asIntSize(m_w) >= 0, m_w); }
             if(Widget::hasIntSize(m_h)){ fflassert(Widget::asIntSize(m_h) >= 0, m_h); }
@@ -502,6 +502,39 @@ class Widget: public WidgetTreeNode
         {
             if(show()){
                 drawEx(x(), y(), 0, 0, w(), h());
+            }
+        }
+
+    public:
+        virtual void drawChildEx(const Widget *child, int dstX, int dstY, int srcX, int srcY, int srcW, int srcH) const final
+        {
+            fflassert(child);
+            fflassert(hasChild(child->id()));
+
+            if(!child->show()){
+                return;
+            }
+
+            int drawSrcX = srcX;
+            int drawSrcY = srcY;
+            int drawSrcW = srcW;
+            int drawSrcH = srcH;
+            int drawDstX = dstX;
+            int drawDstY = dstY;
+
+            if(mathf::cropChildROI(
+                        &drawSrcX, &drawSrcY,
+                        &drawSrcW, &drawSrcH,
+                        &drawDstX, &drawDstY,
+
+                        w(),
+                        h(),
+
+                        child->dx(),
+                        child->dy(),
+                        child-> w(),
+                        child-> h())){
+                child->drawEx(drawDstX, drawDstY, drawSrcX, drawSrcY, drawSrcW, drawSrcH);
             }
         }
 
@@ -635,53 +668,10 @@ class Widget: public WidgetTreeNode
         //  valid: this event has been consumed by other widget
         // return: does current widget take this event?
         //         always return false if given event has been take by previous widget
-        virtual bool processEventDefault(const SDL_Event &event, bool valid)
-        {
-            // this function alters the draw order
-            // if a widget has children having overlapping then be careful
-
-            if(!show()){
-                return false;
-            }
-
-            bool took = false;
-            uint64_t focusedWidgetID = 0;
-
-            foreachChild(false, [&event, valid, &took, &focusedWidgetID, this](Widget *widget, bool)
-            {
-                if(widget->show()){
-                    const bool validEvent = valid && !took;
-                    const bool takenEvent = widget->processEvent(event, validEvent);
-
-                    if(!validEvent && takenEvent){
-                        throw fflerror("widget %s takes invalid event", widget->name());
-                    }
-
-                    if(validEvent && takenEvent && !widget->focus()){
-                        throw fflerror("widget %s takes event but doesn't get focus", widget->name());
-                    }
-
-                    if(widget->focus()){
-                        if(focusedWidgetID){
-                            if(auto focusedWidget = hasChild(focusedWidgetID); focusedWidget && focusedWidget->focus()){
-                                // a widget with focus can drop events
-                                // i.e. a focused slider ignores mouse motion if button released
-                                focusedWidget->setFocus(false);
-                            }
-                        }
-                        focusedWidgetID = widget->id();
-                    }
-
-                    took |= takenEvent;
-                }
-            });
-
-            if(auto widget = hasChild(focusedWidgetID)){
-                moveBack(widget);
-            }
-
-            return took;
-        }
+        //
+        // this function alters the draw order
+        // if a widget has children having overlapping then be careful
+        virtual bool processEventDefault(const SDL_Event &, bool);
 
     public:
         virtual dir8_t dir() const
@@ -719,7 +709,7 @@ class Widget: public WidgetTreeNode
                     int maxW = 0;
                     foreachChild([&maxW](const Widget *widget, bool)
                     {
-                        if(widget->show()){
+                        if(widget->localShow()){
                             maxW = std::max<int>(maxW, widget->dx() + widget->w());
                         }
                     });
@@ -751,7 +741,7 @@ class Widget: public WidgetTreeNode
                     int maxH = 0;
                     foreachChild([&maxH](const Widget *widget, bool)
                     {
-                        if(widget->show()){
+                        if(widget->localShow()){
                             maxH = std::max<int>(maxH, widget->dy() + widget->h());
                         }
                     });
@@ -882,6 +872,11 @@ class Widget: public WidgetTreeNode
             return this;
         }
 
+        bool localShow() const
+        {
+            return Widget::evalFlag(m_show.first, this) != m_show.second;
+        }
+
         bool show() const
         {
             // unlike active(), don't check if parent shows
@@ -910,8 +905,11 @@ class Widget: public WidgetTreeNode
             //
             // we still setup m_show for each child widget
             // but when drawing, widget skips itself and all its child widgets if this->show() returns false
-            //
-            return Widget::evalFlag(m_show.first, this) != m_show.second;
+
+            if(m_parent && !m_parent->show()){
+                return false;
+            }
+            return localShow();
         }
 
         void flipShow()
@@ -926,12 +924,17 @@ class Widget: public WidgetTreeNode
             return this;
         }
 
+        bool localActive() const
+        {
+            return Widget::evalFlag(m_active.first, this) != m_active.second;
+        }
+
         bool active() const
         {
             if(m_parent && !m_parent->active()){
                 return false;
             }
-            return Widget::evalFlag(m_active.first, this) != m_active.second;
+            return localActive();
         }
 
         void flipActive()
@@ -991,6 +994,12 @@ class Widget: public WidgetTreeNode
             m_w = std::move(argW);
             m_h = std::move(argH);
             return this;
+        }
+
+    public:
+        virtual void afterResize()
+        {
+            foreachChild([](Widget *child, bool){ child->afterResize(); });
         }
 
     public:

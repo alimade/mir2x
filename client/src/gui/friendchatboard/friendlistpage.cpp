@@ -1,14 +1,19 @@
 #include "hero.hpp"
 #include "pngtexdb.hpp"
-#include "processrun.hpp"
+#include "frienditem.hpp"
+#include "friendlistpage.hpp"
 #include "friendchatboard.hpp"
+#include "friendchatboardconst.hpp"
 
 extern PNGTexDB *g_progUseDB;
 
-FriendChatBoard::FriendListPage::FriendListPage(Widget::VarDir argDir,
+FriendListPage::FriendListPage(Widget::VarDir argDir,
 
         Widget::VarOff argX,
         Widget::VarOff argY,
+
+        Widget::VarSize argW,
+        Widget::VarSize argH,
 
         Widget *argParent,
         bool    argAutoDelete)
@@ -18,9 +23,8 @@ FriendChatBoard::FriendListPage::FriendListPage(Widget::VarDir argDir,
           std::move(argDir),
           std::move(argX),
           std::move(argY),
-
-          UIPage_WIDTH  - UIPage_MARGIN * 2,
-          UIPage_HEIGHT - UIPage_MARGIN * 2,
+          std::move(argW),
+          std::move(argH),
 
           {},
 
@@ -34,7 +38,7 @@ FriendChatBoard::FriendListPage::FriendListPage(Widget::VarDir argDir,
           0,
           0,
 
-          this->w(),
+          [this](const Widget *){ return w(); },
           {},
           {},
 
@@ -43,13 +47,14 @@ FriendChatBoard::FriendListPage::FriendListPage(Widget::VarDir argDir,
       }
 {}
 
-void FriendChatBoard::FriendListPage::append(const SDChatPeer &peer, std::function<void(FriendChatBoard::FriendItem *)> argOnClick, std::pair<Widget *, bool> argFuncWidget)
+void FriendListPage::append(const SDChatPeer &peer, std::function<void(FriendItem *)> argOnClick, std::pair<Widget *, bool> argFuncWidget)
 {
     canvas.addChild(new FriendItem
     {
         DIR_UPLEFT,
         0,
         0,
+        [this](const Widget *){ return w(); }, // use FriendListPage::w()
 
         SDChatPeerID(CP_PLAYER, peer.id),
         to_u8cstr(peer.name),

@@ -25,7 +25,6 @@ class MenuBoard: public Widget
 
     private:
         ShapeClipBoard m_background;
-        ShapeClipBoard m_frame;
 
     public:
         MenuBoard(
@@ -36,6 +35,7 @@ class MenuBoard: public Widget
                 Widget::VarSize,
                 std::array<int, 4> = {},
 
+                int = 0,
                 int = 0,
                 int = 0,
 
@@ -51,7 +51,4 @@ class MenuBoard: public Widget
 
     public:
         void appendMenu(Widget *, bool, bool);
-
-    public:
-        bool processEventDefault(const SDL_Event &, bool) override;
 };

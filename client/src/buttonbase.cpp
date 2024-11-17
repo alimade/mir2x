@@ -7,15 +7,17 @@
 extern SDLDevice *g_sdlDevice;
 extern SoundEffectDB *g_seffDB;
 
-ButtonBase::ButtonBase(Widget::VarDir argDir,
-        Widget::VarOff argX,
-        Widget::VarOff argY,
-        Widget::VarSize   argW,
-        Widget::VarSize   argH,
+ButtonBase::ButtonBase(
+        Widget::VarDir  argDir,
+        Widget::VarOff  argX,
+        Widget::VarOff  argY,
+        Widget::VarSize argW,
+        Widget::VarSize argH,
 
-        std::function<void(Widget *)> fnOnOverIn,
-        std::function<void(Widget *)> fnOnOverOut,
-        std::function<void(Widget *)> fnOnClick,
+        std::function<void(Widget *      )> fnOnOverIn,
+        std::function<void(Widget *      )> fnOnOverOut,
+        std::function<void(Widget *, bool)> fnOnClick,
+        std::function<void(Widget *      )> fnOnTrigger,
 
         std::optional<uint32_t> seffIDOnOverIn,
         std::optional<uint32_t> seffIDOnOverOut,
@@ -63,9 +65,10 @@ ButtonBase::ButtonBase(Widget::VarDir argDir,
           {offXOnClick  , offYOnClick},
       }
 
-    , m_onOverIn (std::move(fnOnOverIn))
+    , m_onOverIn (std::move(fnOnOverIn ))
     , m_onOverOut(std::move(fnOnOverOut))
-    , m_onClick  (std::move(fnOnClick))
+    , m_onClick  (std::move(fnOnClick  ))
+    , m_onTrigger(std::move(fnOnTrigger))
 {}
 
 bool ButtonBase::processEventDefault(const SDL_Event &event, bool valid)
@@ -118,8 +121,9 @@ bool ButtonBase::processEventDefault(const SDL_Event &event, bool valid)
                                 }
                                 else{
                                     setState(BEVENT_ON);
+                                    onClick(true);
                                     if(m_onClickDone){
-                                        onClick();
+                                        onTrigger();
                                     }
                                 }
                                 break;
@@ -155,8 +159,9 @@ bool ButtonBase::processEventDefault(const SDL_Event &event, bool valid)
                         case BEVENT_ON:
                             {
                                 setState(BEVENT_DOWN);
+                                onClick(false);
                                 if(!m_onClickDone){
-                                    onClick();
+                                    onTrigger();
                                 }
                                 break;
                             }
@@ -232,17 +237,6 @@ bool ButtonBase::processEventDefault(const SDL_Event &event, bool valid)
     }
 }
 
-void ButtonBase::onClick()
-{
-    if(m_onClick){
-        m_onClick(this);
-    }
-
-    if(m_seffID[2].has_value()){
-        g_sdlDevice->playSoundEffect(g_seffDB->retrieve((m_seffID[2].value())));
-    }
-}
-
 void ButtonBase::onOverIn()
 {
     if(m_onOverIn){
@@ -262,6 +256,29 @@ void ButtonBase::onOverOut()
 
     if(m_seffID[1].has_value()){
         g_sdlDevice->playSoundEffect(g_seffDB->retrieve((m_seffID[1].value())));
+    }
+}
+
+void ButtonBase::onClick(bool clickDone)
+{
+    if(m_onClick){
+        m_onClick(this, clickDone);
+    }
+
+    if(clickDone){
+        // press button
+    }
+    else{
+        if(m_seffID[2].has_value()){
+            g_sdlDevice->playSoundEffect(g_seffDB->retrieve((m_seffID[2].value())));
+        }
+    }
+}
+
+void ButtonBase::onTrigger()
+{
+    if(m_onTrigger){
+        m_onTrigger(this);
     }
 }
 

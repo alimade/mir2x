@@ -192,11 +192,11 @@ bool GUIManager::processEventDefault(const SDL_Event &event, bool valid)
     }
 
     bool tookEvent = false;
-    tookEvent |=    g_imeBoard->processEvent(event, valid && !tookEvent);
+    tookEvent |=    g_imeBoard->processEvent       (event, valid && !tookEvent);
     tookEvent |=        Widget::processEventDefault(event, valid && !tookEvent);
-    tookEvent |= m_controlBoard.processEvent(event, valid && !tookEvent);
-    tookEvent |= m_NPCChatBoard.processEvent(event, valid && !tookEvent);
-    tookEvent |= m_miniMapBoard.processEvent(event, valid && !tookEvent);
+    tookEvent |= m_controlBoard.processEvent       (event, valid && !tookEvent);
+    tookEvent |= m_NPCChatBoard.processEvent       (event, valid && !tookEvent);
+    tookEvent |= m_miniMapBoard.processEvent       (event, valid && !tookEvent);
 
     return tookEvent;
 }
@@ -274,7 +274,8 @@ Widget *GUIManager::getWidget(const std::string &name)
 
 void GUIManager::onWindowResize()
 {
-    std::tie(m_w, m_h) = g_sdlDevice->getRendererSize();
+    setW(g_sdlDevice->getRendererWidth ());
+    setH(g_sdlDevice->getRendererHeight());
     m_runtimeConfigBoard.updateWindowSizeLabel(w(), h(), true);
 
     m_controlBoard.onWindowResize(w(), h());

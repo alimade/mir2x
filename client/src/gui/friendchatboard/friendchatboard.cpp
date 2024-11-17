@@ -4,21 +4,27 @@
 #include "hero.hpp"
 #include "pngtexdb.hpp"
 #include "processrun.hpp"
+#include "chatpage.hpp"
+#include "pagecontrol.hpp"
+#include "chatpreviewpage.hpp"
+#include "friendlistpage.hpp"
+#include "searchpage.hpp"
 #include "friendchatboard.hpp"
+#include "friendchatboardconst.hpp"
 
 extern Client *g_client;
 extern PNGTexDB *g_progUseDB;
 extern SDLDevice *g_sdlDevice;
 
-FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget *widgetPtr, bool autoDelete)
+FriendChatBoard::FriendChatBoard(Widget::VarOff argX, Widget::VarOff argY, ProcessRun *runPtr, Widget *widgetPtr, bool autoDelete)
     : Widget
       {
           DIR_UPLEFT,
-          argX,
-          argY,
+          std::move(argX),
+          std::move(argY),
 
-          UIPage_BORDER[2] + UIPage_WIDTH  + UIPage_BORDER[3],
-          UIPage_BORDER[0] + UIPage_HEIGHT + UIPage_BORDER[1],
+          UIPage_BORDER[2] + UIPage_MIN_WIDTH  + UIPage_BORDER[3],
+          UIPage_BORDER[0] + UIPage_MIN_HEIGHT + UIPage_BORDER[1],
 
           {},
 
@@ -42,8 +48,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
           DIR_UPLEFT,
           0,
           0,
-          this->w(),
-          this->h(),
+          [this](const Widget *){ return this->w(); },
+          [this](const Widget *){ return this->h(); },
 
           &m_frame,
 
@@ -76,8 +82,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
           DIR_UPLEFT,
           0,
           0,
-          m_frameCropDup.w(),
-          m_frameCropDup.h(),
+          [this](const Widget *){ return m_frameCropDup.w(); },
+          [this](const Widget *){ return m_frameCropDup.h(); },
 
           &m_background,
 
@@ -93,8 +99,9 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
     , m_close
       {
           DIR_UPLEFT,
-          m_frameCropDup.w() - 38,
-          m_frameCropDup.h() - 40,
+          [this](const Widget *){ return m_frameCropDup.w() - 38; },
+          [this](const Widget *){ return m_frameCropDup.h() - 40; },
+
           {SYS_U32NIL, 0X0000001C, 0X0000001D},
           {
               SYS_U32NIL,
@@ -102,6 +109,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               0X01020000 + 105,
           },
 
+          nullptr,
           nullptr,
           nullptr,
           [this](Widget *)
@@ -128,8 +136,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .title = new LabelBoard
               {
                   DIR_NONE,
-                  45 + (m_frameCropDup.w() - 45 - 190) / 2,
-                  29,
+                  [this](const Widget *){ return 45 + (m_frameCropDup.w() - 45 - 190) / 2; },
+                  [    ](const Widget *){ return 29; },
 
                   u8"好友名称",
                   1,
@@ -143,8 +151,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .control = new PageControl
               {
                   DIR_RIGHT,
-                  m_frameCropDup.w() - 42,
-                  29,
+                  [this](const Widget *){ return m_frameCropDup.w() - 42; },
+                  [    ](const Widget *){ return 29; },
                   2,
 
                   {
@@ -162,6 +170,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                                   0X01020000 + 105,
                               },
 
+                              nullptr,
                               nullptr,
                               nullptr,
                               [this](Widget *)
@@ -189,6 +198,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
+                              nullptr,
                               [this](Widget *)
                               {
                               },
@@ -211,6 +221,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                                   0X01020000 + 105,
                               },
 
+                              nullptr,
                               nullptr,
                               nullptr,
                               [this](Widget *)
@@ -237,6 +248,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
+                              nullptr,
                               [this](Widget *)
                               {
                               },
@@ -254,10 +266,10 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .slider = new TexSlider
               {
                   DIR_UPLEFT,
-                  m_frameCropDup.w() - 30,
-                  70,
-                  9,
-                  m_frameCropDup.h() - 140,
+                  [this](const Widget *){ return m_frameCropDup.w() -  30; },
+                  [    ](const Widget *){ return                       70; },
+                  [    ](const Widget *){ return                        9; },
+                  [this](const Widget *){ return m_frameCropDup.h() - 140; },
 
                   false,
                   3,
@@ -272,6 +284,9 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                   DIR_UPLEFT,
                   UIPage_BORDER[2],
                   UIPage_BORDER[0],
+
+                  [this](const Widget *){ return m_frameCropDup.w() - UIPage_BORDER[2] - UIPage_BORDER[3]; }, // UIPage_MARGIN included
+                  [this](const Widget *){ return m_frameCropDup.h() - UIPage_BORDER[0] - UIPage_BORDER[1]; },
 
                   this,
                   true,
@@ -299,8 +314,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .title = new LabelBoard
               {
                   DIR_NONE,
-                  45 + (m_frameCropDup.w() - 45 - 190) / 2,
-                  29,
+                  [this](const Widget *){ return 45 + (m_frameCropDup.w() - 45 - 190) / 2; },
+                  [    ](const Widget *){ return 29; },
 
                   u8"【聊天记录】",
                   1,
@@ -314,8 +329,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .control = new PageControl
               {
                   DIR_RIGHT,
-                  m_frameCropDup.w() - 42,
-                  28,
+                  [this](const Widget *){ return m_frameCropDup.w() - 42; },
+                  [    ](const Widget *){ return 29; },
                   2,
 
                   {
@@ -335,6 +350,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
+                              nullptr,
                               [this](Widget *)
                               {
                                   setUIPage(UIPage_FRIENDLIST);
@@ -352,10 +368,10 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .slider = new TexSlider
               {
                   DIR_UPLEFT,
-                  m_frameCropDup.w() - 30,
-                  70,
-                  9,
-                  m_frameCropDup.h() - 140,
+                  [this](const Widget *){ return m_frameCropDup.w() -  30; },
+                  [    ](const Widget *){ return                       70; },
+                  [    ](const Widget *){ return                        9; },
+                  [this](const Widget *){ return m_frameCropDup.h() - 140; },
 
                   false,
                   3,
@@ -371,6 +387,9 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                   UIPage_BORDER[2] + UIPage_MARGIN,
                   UIPage_BORDER[0] + UIPage_MARGIN,
 
+                  [this](const Widget *){ return m_frameCropDup.w() - UIPage_BORDER[2] - UIPage_BORDER[3] - 2 * UIPage_MARGIN; },
+                  [this](const Widget *){ return m_frameCropDup.h() - UIPage_BORDER[0] - UIPage_BORDER[1] - 2 * UIPage_MARGIN; },
+
                   this,
                   true,
               },
@@ -381,8 +400,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .title = new LabelBoard
               {
                   DIR_NONE,
-                  45 + (m_frameCropDup.w() - 45 - 190) / 2,
-                  29,
+                  [this](const Widget *){ return 45 + (m_frameCropDup.w() - 45 - 190) / 2; },
+                  [    ](const Widget *){ return 29; },
 
                   u8"【好友列表】",
                   1,
@@ -396,8 +415,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .control = new PageControl
               {
                   DIR_RIGHT,
-                  m_frameCropDup.w() - 42,
-                  28,
+                  [this](const Widget *){ return m_frameCropDup.w() - 42; },
+                  [    ](const Widget *){ return 29; },
                   2,
 
                   {
@@ -415,6 +434,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                                   0X01020000 + 105,
                               },
 
+                              nullptr,
                               nullptr,
                               nullptr,
                               [this](Widget *)
@@ -442,6 +462,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
+                              nullptr,
                               [this](Widget *)
                               {
                                   setUIPage(UIPage_FRIENDSEARCH);
@@ -467,6 +488,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
+                              nullptr,
                               [this](Widget *)
                               {
                                   setUIPage(UIPage_CREATEGROUP);
@@ -484,10 +506,10 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .slider = new TexSlider
               {
                   DIR_UPLEFT,
-                  m_frameCropDup.w() - 30,
-                  70,
-                  9,
-                  m_frameCropDup.h() - 140,
+                  [this](const Widget *){ return m_frameCropDup.w() -  30; },
+                  [    ](const Widget *){ return                       70; },
+                  [    ](const Widget *){ return                        9; },
+                  [this](const Widget *){ return m_frameCropDup.h() - 140; },
 
                   false,
                   3,
@@ -503,6 +525,9 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                   UIPage_BORDER[2] + UIPage_MARGIN,
                   UIPage_BORDER[0] + UIPage_MARGIN,
 
+                  [this](const Widget *){ return m_frameCropDup.w() - UIPage_BORDER[2] - UIPage_BORDER[3] - 2 * UIPage_MARGIN; },
+                  [this](const Widget *){ return m_frameCropDup.h() - UIPage_BORDER[0] - UIPage_BORDER[1] - 2 * UIPage_MARGIN; },
+
                   this,
                   true,
               },
@@ -513,8 +538,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .title = new LabelBoard
               {
                   DIR_NONE,
-                  45 + (m_frameCropDup.w() - 45 - 190) / 2,
-                  29,
+                  [this](const Widget *){ return 45 + (m_frameCropDup.w() - 45 - 190) / 2; },
+                  [    ](const Widget *){ return 29; },
 
                   u8"【查找用户】",
                   1,
@@ -528,8 +553,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .control = new PageControl
               {
                   DIR_RIGHT,
-                  m_frameCropDup.w() - 42,
-                  28,
+                  [this](const Widget *){ return m_frameCropDup.w() - 42; },
+                  [    ](const Widget *){ return 29; },
                   2,
 
                   {
@@ -549,6 +574,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
+                              nullptr,
                               [this](Widget *)
                               {
                                   setUIPage(UIPage_CHATPREVIEW);
@@ -566,10 +592,10 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .slider = new TexSlider
               {
                   DIR_UPLEFT,
-                  m_frameCropDup.w() - 30,
-                  70,
-                  9,
-                  m_frameCropDup.h() - 140,
+                  [this](const Widget *){ return m_frameCropDup.w() -  30; },
+                  [    ](const Widget *){ return                       70; },
+                  [    ](const Widget *){ return                        9; },
+                  [this](const Widget *){ return m_frameCropDup.h() - 140; },
 
                   false,
                   3,
@@ -595,8 +621,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .title = new LabelBoard
               {
                   DIR_NONE,
-                  45 + (m_frameCropDup.w() - 45 - 190) / 2,
-                  29,
+                  [this](const Widget *){ return 45 + (m_frameCropDup.w() - 45 - 190) / 2; },
+                  [    ](const Widget *){ return 29; },
 
                   u8"【创建群聊】",
                   1,
@@ -610,8 +636,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .control = new PageControl
               {
                   DIR_RIGHT,
-                  m_frameCropDup.w() - 42,
-                  28,
+                  [this](const Widget *){ return m_frameCropDup.w() - 42; },
+                  [    ](const Widget *){ return 29; },
                   2,
 
                   {
@@ -629,6 +655,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                                   0X01020000 + 105,
                               },
 
+                              nullptr,
                               nullptr,
                               nullptr,
                               [this](Widget *)
@@ -654,6 +681,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                                   0X01020000 + 105,
                               },
 
+                              nullptr,
                               nullptr,
                               nullptr,
                               [this](Widget *)
@@ -729,6 +757,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
                               nullptr,
                               nullptr,
+                              nullptr,
                               [this](Widget *)
                               {
                                   dynamic_cast<FriendListPage *>(m_uiPageList[UIPage_CREATEGROUP].page)->canvas.foreachChild([](Widget *widget, bool)
@@ -753,10 +782,10 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
               .slider = new TexSlider
               {
                   DIR_UPLEFT,
-                  m_frameCropDup.w() - 30,
-                  70,
-                  9,
-                  m_frameCropDup.h() - 140,
+                  [this](const Widget *){ return m_frameCropDup.w() -  30; },
+                  [    ](const Widget *){ return                       70; },
+                  [    ](const Widget *){ return                        9; },
+                  [this](const Widget *){ return m_frameCropDup.h() - 140; },
 
                   false,
                   3,
@@ -771,6 +800,8 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                   DIR_UPLEFT,
                   UIPage_BORDER[2] + UIPage_MARGIN,
                   UIPage_BORDER[0] + UIPage_MARGIN,
+                  [this](const Widget *){ return m_frameCropDup.w() - UIPage_BORDER[2] - UIPage_BORDER[3] - 2 * UIPage_MARGIN; },
+                  [this](const Widget *){ return m_frameCropDup.h() - UIPage_BORDER[0] - UIPage_BORDER[1] - 2 * UIPage_MARGIN; },
 
                   this,
                   true,
@@ -778,7 +809,7 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
               .enter = [this](int, UIPage *uiPage)
               {
-                  auto listPage = dynamic_cast<FriendChatBoard::FriendListPage *>(uiPage->page);
+                  auto listPage = dynamic_cast<FriendListPage *>(uiPage->page);
                   listPage->canvas.clearChild([this](const Widget *widget, bool)
                   {
                       return std::find_if(m_sdFriendList.begin(), m_sdFriendList.end(), [widget](const auto &x)
@@ -794,9 +825,9 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
                           return dynamic_cast<const FriendItem *>(widget)->cpid.id() == peer.id;
 
                       })){
-                          listPage->append(peer, [](FriendChatBoard::FriendItem *item)
+                          listPage->append(peer, [](FriendItem *item)
                           {
-                              if(auto friendItem = dynamic_cast<FriendChatBoard::FriendItem *>(item)){
+                              if(auto friendItem = dynamic_cast<FriendItem *>(item)){
                                   if(auto checkBox = dynamic_cast<CheckBox *>(friendItem->hasChild(friendItem->funcWidgetID))){
                                       checkBox->toggle();
                                   }
@@ -849,6 +880,10 @@ FriendChatBoard::FriendChatBoard(int argX, int argY, ProcessRun *runPtr, Widget 
 
 void FriendChatBoard::drawEx(int dstX, int dstY, int srcX, int srcY, int srcW, int srcH) const
 {
+    if(!show()){
+        return;
+    }
+
     for(const auto &p:
     {
         static_cast<const Widget *>(&m_backgroundCropDup),
@@ -886,10 +921,12 @@ void FriendChatBoard::drawEx(int dstX, int dstY, int srcX, int srcY, int srcW, i
 bool FriendChatBoard::processEventDefault(const SDL_Event &event, bool valid)
 {
     if(!valid){
+        m_dragIndex.reset();
         return consumeFocus(false);
     }
 
     if(!show()){
+        m_dragIndex.reset();
         return consumeFocus(false);
     }
 
@@ -917,20 +954,6 @@ bool FriendChatBoard::processEventDefault(const SDL_Event &event, bool valid)
                 }
                 return false;
             }
-        case SDL_MOUSEMOTION:
-            {
-                if((event.motion.state & SDL_BUTTON_LMASK) && (in(event.motion.x, event.motion.y) || focus())){
-                    const auto [rendererW, rendererH] = g_sdlDevice->getRendererSize();
-                    const int maxX = rendererW - w();
-                    const int maxY = rendererH - h();
-
-                    const int newX = std::max<int>(0, std::min<int>(maxX, x() + event.motion.xrel));
-                    const int newY = std::max<int>(0, std::min<int>(maxY, y() + event.motion.yrel));
-                    moveBy(newX - x(), newY - y());
-                    return consumeFocus(true);
-                }
-                return consumeFocus(false);
-            }
         case SDL_MOUSEBUTTONDOWN:
             {
                 if(m_uiPageList[m_uiPage].page->in(event.button.x, event.button.y)){
@@ -938,7 +961,67 @@ bool FriendChatBoard::processEventDefault(const SDL_Event &event, bool valid)
                         return consumeFocus(true, m_uiPageList[m_uiPage].page);
                     }
                 }
+
+                m_dragIndex = getEdgeDragIndex(event.button.x, event.button.y);
                 return consumeFocus(in(event.button.x, event.button.y));
+            }
+        case SDL_MOUSEBUTTONUP:
+            {
+                m_dragIndex.reset();
+                return consumeFocus(in(event.button.x, event.button.y));
+            }
+        case SDL_MOUSEMOTION:
+            {
+                if(event.motion.state & SDL_BUTTON_LMASK){
+                    if(m_dragIndex.has_value()){
+                        const auto fnAdjustW = [this](int dw, bool adjustOff)
+                        {
+                            const int oldW = w();
+                            const int newW = std::max<int>(oldW + dw, UIPage_BORDER[2] + UIPage_MIN_WIDTH + UIPage_BORDER[3]);
+
+                            if(oldW != newW){
+                                setW(newW);
+                                if(adjustOff){
+                                    moveBy(oldW - newW, 0);
+                                }
+                            }
+                        };
+
+                        const auto fnAdjustH = [this](int dh, bool adjustOff)
+                        {
+                            const int oldH = h();
+                            const int newH = std::max<int>(oldH + dh, UIPage_BORDER[0] + UIPage_MIN_HEIGHT + UIPage_BORDER[1]);
+
+                            if(oldH != newH){
+                                setH(newH);
+                                if(adjustOff){
+                                    moveBy(0, oldH - newH);
+                                }
+                            }
+                        };
+
+                        if     (m_dragIndex.value() == 0){ fnAdjustW(-event.motion.xrel, 1); fnAdjustH(-event.motion.yrel, 1); }
+                        else if(m_dragIndex.value() == 1){                                   fnAdjustH(-event.motion.yrel, 1); }
+                        else if(m_dragIndex.value() == 2){ fnAdjustW( event.motion.xrel, 0); fnAdjustH(-event.motion.yrel, 1); }
+                        else if(m_dragIndex.value() == 3){ fnAdjustW(-event.motion.xrel, 1);                                   }
+                        else if(m_dragIndex.value() == 4){ fnAdjustW( event.motion.xrel, 0);                                   }
+                        else if(m_dragIndex.value() == 5){ fnAdjustW(-event.motion.xrel, 1); fnAdjustH( event.motion.yrel, 0); }
+                        else if(m_dragIndex.value() == 6){                                   fnAdjustH( event.motion.yrel, 0); }
+                        else                             { fnAdjustW( event.motion.xrel, 0); fnAdjustH( event.motion.yrel, 0); }
+                    }
+                    else{
+                        const auto [rendererW, rendererH] = g_sdlDevice->getRendererSize();
+
+                        const int maxX = rendererW - w();
+                        const int maxY = rendererH - h();
+
+                        const int newX = std::max<int>(0, std::min<int>(maxX, x() + event.motion.xrel));
+                        const int newY = std::max<int>(0, std::min<int>(maxY, y() + event.motion.yrel));
+                        moveBy(newX - x(), newY - y());
+                    }
+                    return consumeFocus(true);
+                }
+                return consumeFocus(false);
             }
         case SDL_MOUSEWHEEL:
             {
@@ -964,10 +1047,10 @@ void FriendChatBoard::addFriendListChatPeer(const SDChatPeerID &sdCPID)
             return;
         }
 
-        dynamic_cast<FriendListPage *>(m_uiPageList[UIPage_FRIENDLIST].page)->append(*peer, [peerInst = *peer, this](FriendChatBoard::FriendItem *item)
+        dynamic_cast<FriendListPage *>(m_uiPageList[UIPage_FRIENDLIST].page)->append(*peer, [peerInst = *peer, this](FriendItem *item)
         {
             setChatPeer(peerInst, true);
-            setUIPage(FriendChatBoard::UIPage_CHAT);
+            setUIPage(UIPage_CHAT);
             m_processRun->requestLatestChatMessage({item->cpid.asU64()}, 50, true, true);
         });
     });
@@ -1133,7 +1216,7 @@ void FriendChatBoard::addMessage(std::optional<uint64_t> localPendingID, const S
             if(chatPage->peer.cpid() == peerIter->cpid){
                 if(localPendingID.has_value()){
                     if(auto p = chatPage->chat.canvas.hasChild(localPendingID.value())){
-                        dynamic_cast<FriendChatBoard::ChatItem *>(p)->pending = false;
+                        dynamic_cast<ChatItem *>(p)->pending = false;
                     }
                 }
                 else{
@@ -1410,4 +1493,49 @@ void FriendChatBoard::onAddFriendAccepted(const SDChatPeer &argCP)
 void FriendChatBoard::onAddFriendRejected(const SDChatPeer &argCP)
 {
     m_processRun->addCBParLog(u8R"###(<par bgcolor="rgb(0x00, 0x80, 0x00)"><t color="red">%s</t>已经拒绝了你的好友请求。</par>)###", to_cstr(argCP.name));
+}
+
+std::optional<int> FriendChatBoard::getEdgeDragIndex(int eventX, int eventY) const
+{
+    // ->|w0|<----w1------->|w2|<-   |
+    //   x0 x1              x2       v
+    //   +--+---------------+--+ y0  -
+    //   |0)|       1)      |2)|     h0
+    //   +--+---------------+--+ y1  -
+    //   |  |               |  |     ^
+    //   |  |               |  |     |
+    //   |3)|               |4)|     h1
+    //   |  |               |  |     |
+    //   |  |               |  |     v
+    //   +--+---------------+--+ y2  -
+    //   |5)|       6)      |7)|     h2
+    //   +--+---------------+--+     -
+    //                               ^
+    //                               |
+
+    const int x0 = x();
+    const int x1 = x0       + UIPage_DRAGBORDER[2];
+    const int x2 = x0 + w() - UIPage_DRAGBORDER[3];
+
+    const int y0 = y();
+    const int y1 = y0       + UIPage_DRAGBORDER[0];
+    const int y2 = y0 + h() - UIPage_DRAGBORDER[1];
+
+    const int w0 =                              UIPage_DRAGBORDER[2];
+    const int w1 = w() - UIPage_DRAGBORDER[2] - UIPage_DRAGBORDER[3];
+    const int w2 =                              UIPage_DRAGBORDER[3];
+
+    const int h0 =                              UIPage_DRAGBORDER[0];
+    const int h1 = h() - UIPage_DRAGBORDER[0] - UIPage_DRAGBORDER[1];
+    const int h2 =                              UIPage_DRAGBORDER[1];
+
+    if     (mathf::pointInRectangle<int>(eventX, eventY, x0, y0, w0, h0)) return 0;
+    else if(mathf::pointInRectangle<int>(eventX, eventY, x1, y0, w1, h0)) return 1;
+    else if(mathf::pointInRectangle<int>(eventX, eventY, x2, y0, w2, h0)) return 2;
+    else if(mathf::pointInRectangle<int>(eventX, eventY, x0, y1, w0, h1)) return 3;
+    else if(mathf::pointInRectangle<int>(eventX, eventY, x2, y1, w2, h1)) return 4;
+    else if(mathf::pointInRectangle<int>(eventX, eventY, x0, y2, w0, h2)) return 5;
+    else if(mathf::pointInRectangle<int>(eventX, eventY, x1, y2, w1, h2)) return 6;
+    else if(mathf::pointInRectangle<int>(eventX, eventY, x2, y2, w2, h2)) return 7;
+    else                                                                  return std::nullopt;
 }

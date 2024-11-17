@@ -1,12 +1,15 @@
 #include "sdldevice.hpp"
 #include "processrun.hpp"
+#include "chatitem.hpp"
+#include "chatpage.hpp"
 #include "friendchatboard.hpp"
 
 extern SDLDevice *g_sdlDevice;
 
-FriendChatBoard::ChatItem::ChatItem(dir8_t argDir,
-        int argX,
-        int argY,
+ChatItem::ChatItem(
+        Widget::VarDir argDir,
+        Widget::VarOff argX,
+        Widget::VarOff argY,
 
         bool argPending,
 
@@ -25,9 +28,9 @@ FriendChatBoard::ChatItem::ChatItem(dir8_t argDir,
 
     : Widget
       {
-          argDir,
-          argX,
-          argY,
+          std::move(argDir),
+          std::move(argX),
+          std::move(argY),
 
           {},
           {},
@@ -111,7 +114,7 @@ FriendChatBoard::ChatItem::ChatItem(dir8_t argDir,
                   const auto cpidstr = LayoutBoard::findAttrValue(attrList, "cpid");
                   fflassert(cpidstr);
 
-                  getParentBoard(this)->queryChatPeer(SDChatPeerID(std::stoull(cpidstr)), [attrList, this](const SDChatPeer *sdCP, bool)
+                  FriendChatBoard::getParentBoard(this)->queryChatPeer(SDChatPeerID(std::stoull(cpidstr)), [attrList, this](const SDChatPeer *sdCP, bool)
                   {
                       if(LayoutBoard::findAttrValue(attrList, "accept")){
                           FriendChatBoard::getParentBoard(this)->requestAcceptAddFriend(*sdCP);
@@ -247,7 +250,82 @@ FriendChatBoard::ChatItem::ChatItem(dir8_t argDir,
     }
 }
 
-void FriendChatBoard::ChatItem::update(double fUpdateTime)
+void ChatItem::update(double fUpdateTime)
 {
     accuTime += fUpdateTime;
+}
+
+bool ChatItem::processEventDefault(const SDL_Event &event, bool valid)
+{
+    if(!valid){
+        return consumeFocus(false);
+    }
+
+    if(!show()){
+        return consumeFocus(false);
+    }
+
+    if(true
+            && event.type == SDL_MOUSEBUTTONUP
+            && event.button.button == SDL_BUTTON_RIGHT
+            && background.in(event.button.x, event.button.y)){
+
+        if(auto chatPage = dynamic_cast<ChatPage *>(parent(3))){
+            if(chatPage->menu){
+                chatPage->removeChild(chatPage->menu, true);
+                chatPage->menu = nullptr;
+            }
+
+            chatPage->addChild((chatPage->menu = new MenuBoard
+            {
+                DIR_UPLEFT,
+                0,
+                0,
+                200,
+
+                {5, 5, 5, 5},
+
+                3,
+                5,
+                6,
+
+                {
+                    {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"引用" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::string>("引用")), false, true},
+                    {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"复制" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::string>("复制")), false, true},
+                },
+
+                [](Widget *item)
+                {
+                    if(const auto op = std::any_cast<std::string>(item->data()); op == "引用"){
+                    }
+                },
+            }),
+
+            DIR_UPLEFT,
+            event.button.x - chatPage->x(),
+            event.button.y - chatPage->y(),
+            true);
+
+            chatPage->menu->setShow(true);
+            chatPage->menu->setFocus(true);
+        }
+
+        setFocus(false);
+        return true;
+    }
+
+    if(Widget::processEventDefault(event, valid)){
+        if(!focus()){
+            setFocus(true);
+        }
+
+        if(auto chatPage = dynamic_cast<ChatPage *>(parent(3))){
+            if(chatPage->menu){
+                chatPage->removeChild(chatPage->menu, true);
+                chatPage->menu = nullptr;
+            }
+        }
+        return true;
+    }
+    return false;
 }

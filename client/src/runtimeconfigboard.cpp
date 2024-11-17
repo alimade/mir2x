@@ -298,6 +298,7 @@ RuntimeConfigBoard::PullMenu::PullMenu(
 
           nullptr,
           nullptr,
+          nullptr,
           [this](Widget *)
           {
               m_menuList.flipShow();
@@ -328,6 +329,7 @@ RuntimeConfigBoard::PullMenu::PullMenu(
 
           {5, 5, 5, 5},
 
+          3,
           6,
           7,
 
@@ -348,6 +350,31 @@ RuntimeConfigBoard::PullMenu::PullMenu(
     m_button       .moveAt(DIR_LEFT, m_menuTitleBackground.dx() + m_menuTitleBackground.w(), maxHeight / 2);
 
     m_menuList.moveAt(DIR_UPLEFT, m_menuTitleBackground.dx() + 3, m_menuTitleBackground.dy() + m_menuTitleBackground.h() - 2);
+
+    m_menuTitleCrop.setProcessEvent([this](Widget *self, const SDL_Event &event, bool valid)
+    {
+        if(!valid){
+            return self->consumeFocus(false);
+        }
+
+        switch(event.type){
+            case SDL_MOUSEBUTTONUP:
+                {
+                    const auto [eventX, eventY] = SDLDeviceHelper::getEventPLoc(event).value();
+                    if(self->in(eventX, eventY)){
+                        m_menuList.setShow(true);
+                        return self->consumeFocus(true);
+                    }
+                    else{
+                        return false;
+                    }
+                }
+            default:
+                {
+                    return false;
+                }
+        }
+    });
 }
 
 RuntimeConfigBoard::LabelSliderBar::LabelSliderBar(
@@ -487,6 +514,14 @@ bool RuntimeConfigBoard::PullMenu::processEventDefault(const SDL_Event &event, b
     }
 
     if(Widget::processEventDefault(event, valid)){
+        if(!focus()){
+            if(!m_menuList.show()){
+                consumeFocus(true, &m_button);
+            }
+            else{
+                setFocus(true);
+            }
+        }
         return true;
     }
 
@@ -564,6 +599,7 @@ RuntimeConfigBoard::MenuPage::TabHeader::TabHeader(
               0X01020000 + 105,
           },
 
+          nullptr,
           nullptr,
           nullptr,
           std::move(argOnClick),
@@ -784,11 +820,11 @@ RuntimeConfigBoard::RuntimeConfigBoard(int argX, int argY, int argW, int argH, P
 
           {
               {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"800×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 800, 600)), false, true},
-              // {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"960×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 960, 600)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"960×600" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>( 960, 600)), false, true},
               {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1024×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1024, 768)), false, true},
-              // {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×720", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 720)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×720", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 720)), false, true},
               {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×768", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 768)), false, true},
-              // {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×800", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 800)), false, true},
+              {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"1280×800", 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::pair<int, int>>(1280, 800)), false, true},
           },
 
           [this](Widget *widgetPtr)

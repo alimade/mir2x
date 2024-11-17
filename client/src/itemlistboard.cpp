@@ -38,6 +38,7 @@ ItemListBoard::ItemListBoard(int argX, int argY, Widget *widgetPtr, bool autoDel
 
           nullptr,
           nullptr,
+          nullptr,
           [this](Widget *)
           {
               m_page = to_uz(mathf::bound<int>(to_d(m_page) - 1, 0, to_d(pageCount()) - 1));
@@ -68,6 +69,7 @@ ItemListBoard::ItemListBoard(int argX, int argY, Widget *widgetPtr, bool autoDel
               0X01020000 + 105,
           },
 
+          nullptr,
           nullptr,
           nullptr,
           [this](Widget *)
@@ -102,6 +104,7 @@ ItemListBoard::ItemListBoard(int argX, int argY, Widget *widgetPtr, bool autoDel
 
           nullptr,
           nullptr,
+          nullptr,
           [this](Widget *)
           {
               m_page = to_uz(mathf::bound<int>(to_d(m_page) + 1, 0, to_d(pageCount()) - 1));
@@ -134,6 +137,7 @@ ItemListBoard::ItemListBoard(int argX, int argY, Widget *widgetPtr, bool autoDel
 
           nullptr,
           nullptr,
+          nullptr,
           [this](Widget *)
           {
               onClose();
@@ -155,7 +159,8 @@ ItemListBoard::ItemListBoard(int argX, int argY, Widget *widgetPtr, bool autoDel
 {
     setShow(false);
     if(auto texPtr = g_progUseDB->retrieve(0X08000000)){
-        std::tie(m_w, m_h) = SDLDeviceHelper::getTextureSize(texPtr);
+        setW(SDLDeviceHelper::getTextureWidth (texPtr));
+        setH(SDLDeviceHelper::getTextureHeight(texPtr));
     }
     else{
         throw fflerror("no valid purchase status board frame texture");

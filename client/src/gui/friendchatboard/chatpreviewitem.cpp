@@ -2,14 +2,18 @@
 #include "pngtexdb.hpp"
 #include "sdldevice.hpp"
 #include "processrun.hpp"
+#include "chatpreviewitem.hpp"
 #include "friendchatboard.hpp"
+#include "friendchatboardconst.hpp"
 
 extern PNGTexDB *g_progUseDB;
 extern SDLDevice *g_sdlDevice;
 
-FriendChatBoard::ChatPreviewItem::ChatPreviewItem(dir8_t argDir,
-        int argX,
-        int argY,
+ChatPreviewItem::ChatPreviewItem(
+        Widget::VarDir  argDir,
+        Widget::VarOff  argX,
+        Widget::VarOff  argY,
+        Widget::VarSize argW,
 
         const SDChatPeerID &argCPID,
         const char8_t *argChatXMLStr,
@@ -19,11 +23,10 @@ FriendChatBoard::ChatPreviewItem::ChatPreviewItem(dir8_t argDir,
 
     : Widget
       {
-          argDir,
-          argX,
-          argY,
-
-          ChatPreviewItem::WIDTH,
+          std::move(argDir),
+          std::move(argX),
+          std::move(argY),
+          std::move(argW),
           ChatPreviewItem::HEIGHT,
 
           {},
@@ -103,7 +106,11 @@ FriendChatBoard::ChatPreviewItem::ChatPreviewItem(dir8_t argDir,
           ChatPreviewItem::ITEM_MARGIN + ChatPreviewItem::AVATAR_WIDTH + ChatPreviewItem::GAP,
           ChatPreviewItem::ITEM_MARGIN + ChatPreviewItem::NAME_HEIGHT,
 
-          ChatPreviewItem::WIDTH  - ChatPreviewItem::ITEM_MARGIN * 2 - ChatPreviewItem::AVATAR_WIDTH - ChatPreviewItem::GAP,
+          [this](const Widget *)
+          {
+              return w() - ChatPreviewItem::ITEM_MARGIN * 2 - ChatPreviewItem::AVATAR_WIDTH - ChatPreviewItem::GAP;
+          },
+
           ChatPreviewItem::HEIGHT - ChatPreviewItem::ITEM_MARGIN * 2 - ChatPreviewItem::NAME_HEIGHT,
 
           {
@@ -120,8 +127,8 @@ FriendChatBoard::ChatPreviewItem::ChatPreviewItem(dir8_t argDir,
           0,
           0,
 
-          this->w(),
-          this->h(),
+          [this](const Widget *){ return w(); },
+          [this](const Widget *){ return h(); },
 
           [this](const Widget *, int drawDstX, int drawDstY)
           {
@@ -158,7 +165,7 @@ FriendChatBoard::ChatPreviewItem::ChatPreviewItem(dir8_t argDir,
     });
 }
 
-bool FriendChatBoard::ChatPreviewItem::processEventDefault(const SDL_Event &event, bool valid)
+bool ChatPreviewItem::processEventDefault(const SDL_Event &event, bool valid)
 {
     if(!valid){
         return consumeFocus(false);
@@ -186,7 +193,7 @@ bool FriendChatBoard::ChatPreviewItem::processEventDefault(const SDL_Event &even
                         auto boardPtr = FriendChatBoard::getParentBoard(this);
 
                         boardPtr->setChatPeer(*peer, true);
-                        boardPtr->setUIPage(FriendChatBoard::UIPage_CHAT);
+                        boardPtr->setUIPage(UIPage_CHAT);
                     });
                     return consumeFocus(true);
                 }
