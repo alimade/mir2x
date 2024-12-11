@@ -54,13 +54,10 @@ struct ChatItem: public Widget
     constexpr static int AVATAR_HEIGHT = AVATAR_WIDTH * 94 / 84;
 
     constexpr static int GAP = 5;
-    constexpr static int ITEM_SPACE = 5;  // space between two items
     constexpr static int NAME_HEIGHT = 20;
 
     constexpr static int TRIANGLE_WIDTH  = 4;
     constexpr static int TRIANGLE_HEIGHT = 6;
-
-    constexpr static int MAX_WIDTH = UIPage_MIN_WIDTH - UIPage_MARGIN * 2 - ChatItem::TRIANGLE_WIDTH - ChatItem::GAP - ChatItem::AVATAR_WIDTH;
 
     constexpr static int MESSAGE_MARGIN = 5;
     constexpr static int MESSAGE_CORNER = 3;
@@ -73,6 +70,10 @@ struct ChatItem: public Widget
     bool pending = true;
     double accuTime = 0.0;
 
+    // nullopt when message id is pending
+    // also used to support fake chat message that has no message id
+    std::optional<uint64_t> msgID = std::nullopt;
+
     const bool showName;
     const bool avatarLeft;
     const std::optional<uint32_t> bgColor;
@@ -80,16 +81,21 @@ struct ChatItem: public Widget
     ImageBoard avatar;
     LabelBoard name;
 
-    LayoutBoard    message;
+    LayoutBoard message;
     ShapeClipBoard background;
 
     ChatItemRef * const msgref = nullptr;
 
-    ChatItem(Widget::VarDir,
+    ChatItem(
+            Widget::VarDir,
             Widget::VarOff,
             Widget::VarOff,
 
+            int,
             bool,
+
+            std::optional<uint64_t>,
+            std::optional<uint64_t>,
 
             const char8_t *,
             const char8_t *,
@@ -104,6 +110,7 @@ struct ChatItem: public Widget
             Widget * = nullptr,
             bool     = false);
 
+    void setMaxWidth(int);
     void update(double) override;
     bool processEventDefault(const SDL_Event &, bool) override;
 };

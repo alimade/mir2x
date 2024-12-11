@@ -10,9 +10,9 @@
 #include "strf.hpp"
 #include "fflerror.hpp"
 
-constexpr int LEAF_UTF8GROUP = 0;
-constexpr int LEAF_IMAGE     = 1;
-constexpr int LEAF_EMOJI     = 2;
+constexpr int LEAF_UTF8STR = 0;
+constexpr int LEAF_IMAGE   = 1;
+constexpr int LEAF_EMOJI   = 2;
 
 class XMLParagraphLeaf
 {
@@ -20,7 +20,7 @@ class XMLParagraphLeaf
         friend class XMLParapragh;
 
     private:
-        tinyxml2::XMLNode *m_node;
+        tinyxml2::XMLNode * m_node;
 
     private:
         int m_type;
@@ -48,51 +48,41 @@ class XMLParagraphLeaf
             return m_type;
         }
 
-        const tinyxml2::XMLNode *xmlNode() const
+        tinyxml2::XMLNode *xmlNode(this auto && self)
         {
-            return m_node;
+            return self.m_node;
         }
 
-        tinyxml2::XMLNode *xmlNode()
+        auto & utf8CharOff(this auto && self)
         {
-            return const_cast<tinyxml2::XMLNode *>(static_cast<const XMLParagraphLeaf *>(this)->xmlNode());
+            if(self.type() != LEAF_UTF8STR){
+                throw fflerror("leaf is not an utf8 string");
+            }
+
+            if(self.m_utf8CharOff.empty()){
+                throw fflerror("utf8 token off doesn't initialized");
+            }
+
+            return self.m_utf8CharOff;
         }
 
         int length() const
         {
-            if(type() == LEAF_UTF8GROUP){
-                return to_d(utf8CharOffRef().size());
+            if(type() == LEAF_UTF8STR){
+                return to_d(utf8CharOff().size());
             }
             return 1;
         }
 
-        const std::vector<int> &utf8CharOffRef() const
+        const char *utf8Text() const
         {
-            if(type() != LEAF_UTF8GROUP){
-                throw fflerror("leaf is not an utf8 string");
-            }
-
-            if(m_utf8CharOff.empty()){
-                throw fflerror("utf8 token off doesn't initialized");
-            }
-
-            return m_utf8CharOff;
-        }
-
-        std::vector<int> &utf8CharOffRef()
-        {
-            return const_cast<std::vector<int> &>(static_cast<const XMLParagraphLeaf *>(this)->utf8CharOffRef());
-        }
-
-        const char *UTF8Text() const
-        {
-            if(type() != LEAF_UTF8GROUP){
+            if(type() != LEAF_UTF8STR){
                 return nullptr;
             }
             return xmlNode()->Value();
         }
 
-        uint64_t ImageU64Key() const
+        uint64_t imageU64Key() const
         {
             if(type() != LEAF_IMAGE){
                 throw fflerror("leaf is not an image");

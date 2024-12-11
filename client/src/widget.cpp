@@ -88,38 +88,51 @@ void WidgetTreeNode::execDeath() noexcept
     onDeath();
 }
 
-void WidgetTreeNode::addChild(Widget *widget, bool autoDelete)
+void WidgetTreeNode::doAddChild(Widget *argWidget, bool argAutoDelete)
 {
-    fflassert(widget);
-    WidgetTreeNode *treeNode = widget;
+    fflassert(argWidget);
+    WidgetTreeNode *treeNode = argWidget;
 
     if(treeNode->m_parent){
-        treeNode->m_parent->removeChild(widget, false);
+        treeNode->m_parent->removeChild(argWidget, false);
     }
 
     treeNode->m_parent = static_cast<Widget *>(this);
-    m_childList.emplace_back(widget, autoDelete);
+    m_childList.emplace_back(argWidget, argAutoDelete);
 }
 
-void WidgetTreeNode::addChild(Widget *argWidget, Widget::VarDir argDir, Widget::VarOff argX, Widget::VarOff argY, bool argAutoDelete)
+void WidgetTreeNode::addChild(Widget *argWidget, bool argAutoDelete)
 {
-    fflassert(argWidget);
-    addChild(argWidget, argAutoDelete);
+    doAddChild(argWidget, argAutoDelete);
+}
+
+void WidgetTreeNode::addChildAt(Widget *argWidget, WidgetTreeNode::VarDir argDir, WidgetTreeNode::VarOff argX, WidgetTreeNode::VarOff argY, bool argAutoDelete)
+{
+    doAddChild(argWidget, argAutoDelete);
     argWidget->moveAt(std::move(argDir), std::move(argX), std::move(argY));
 }
 
-void WidgetTreeNode::removeChild(Widget *widget, bool triggerDelete)
+void WidgetTreeNode::removeChild(Widget *argWidget, bool argTriggerDelete)
 {
-    for(auto p = m_childList.begin(); p != m_childList.end(); ++p){
-        if(WidgetTreeNode * treeNode = p->widget; p->widget == widget){
-            p->widget = nullptr;
-            treeNode->m_parent = nullptr;
-
-            if(triggerDelete && p->autoDelete){
-                widget->execDeath();
-                m_delayList.push_back(widget);
+    if(argWidget){
+        for(auto p = m_childList.begin(); p != m_childList.end(); ++p){
+            if(p->widget == argWidget){
+                removeChildElement(*p, argTriggerDelete);
+                return;
             }
-            return;
+        }
+    }
+}
+
+void WidgetTreeNode::removeChildElement(WidgetTreeNode::ChildElement &argElement, bool argTriggerDelete)
+{
+    if(auto widptr = argElement.widget){
+        widptr->m_parent = nullptr;
+        argElement.widget = nullptr;
+
+        if(argElement.autoDelete && argTriggerDelete){
+            widptr->execDeath();
+            m_delayList.push_back(widptr);
         }
     }
 }
@@ -171,6 +184,36 @@ const Widget *WidgetTreeNode::hasChild(uint64_t argID) const
     return nullptr;
 }
 
+Widget *WidgetTreeNode::hasDescendant(uint64_t argID)
+{
+    for(auto p = m_childList.begin(); p != m_childList.end(); ++p){
+        if(p->widget){
+            if(p->widget->id() == argID){
+                return p->widget;
+            }
+            else if(auto descendant = p->widget->hasDescendant(argID)){
+                return descendant;
+            }
+        }
+    }
+    return nullptr;
+}
+
+const Widget *WidgetTreeNode::hasDescendant(uint64_t argID) const
+{
+    for(auto p = m_childList.begin(); p != m_childList.end(); ++p){
+        if(p->widget){
+            if(p->widget->id() == argID){
+                return p->widget;
+            }
+            else if(auto descendant = p->widget->hasDescendant(argID)){
+                return descendant;
+            }
+        }
+    }
+    return nullptr;
+}
+
 bool Widget::processEventDefault(const SDL_Event &event, bool valid)
 {
     if(!show()){
@@ -213,4 +256,9 @@ bool Widget::processEventDefault(const SDL_Event &event, bool valid)
     }
 
     return took;
+}
+
+void Widget::afterResizeDefault()
+{
+    foreachChild([](Widget *child, bool){ child->afterResize(); });
 }

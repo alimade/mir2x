@@ -1,3 +1,4 @@
+#include "utf8f.hpp"
 #include "sdldevice.hpp"
 #include "processrun.hpp"
 #include "chatitem.hpp"
@@ -11,7 +12,11 @@ ChatItem::ChatItem(
         Widget::VarOff argX,
         Widget::VarOff argY,
 
+        int  argMaxWidth,
         bool argPending,
+
+        /**/  std::optional<uint64_t> argMsgID,
+        const std::optional<uint64_t> argMsgRefID,
 
         const char8_t *argNameStr,
         const char8_t *argMessageStr,
@@ -41,6 +46,7 @@ ChatItem::ChatItem(
       }
 
     , pending(argPending)
+    , msgID(argMsgID)
     , showName(argShowName)
     , avatarLeft(argAvatarLeft)
     , bgColor(std::move(argBGColor))
@@ -74,7 +80,8 @@ ChatItem::ChatItem(
           DIR_UPLEFT,
           0,
           0,
-          ChatItem::MAX_WIDTH - ChatItem::AVATAR_WIDTH - ChatItem::GAP - ChatItem::TRIANGLE_WIDTH - ChatItem::MESSAGE_MARGIN * 2,
+
+          std::max<int>(1, argMaxWidth - ChatItem::AVATAR_WIDTH - ChatItem::GAP - ChatItem::TRIANGLE_WIDTH - ChatItem::MESSAGE_MARGIN * 2),
 
           to_cstr(argMessageStr),
           0,
@@ -144,8 +151,8 @@ ChatItem::ChatItem(
           0,
           0,
 
-          ChatItem::MESSAGE_MARGIN * 2 + std::max<int>(message.w(), ChatItem::MESSAGE_MIN_WIDTH ) + ChatItem::TRIANGLE_WIDTH,
-          ChatItem::MESSAGE_MARGIN * 2 + std::max<int>(message.h(), ChatItem::MESSAGE_MIN_HEIGHT),
+          [this](const Widget *){ return ChatItem::MESSAGE_MARGIN * 2 + std::max<int>(message.w(), ChatItem::MESSAGE_MIN_WIDTH ) + ChatItem::TRIANGLE_WIDTH; },
+          [this](const Widget *){ return ChatItem::MESSAGE_MARGIN * 2 + std::max<int>(message.h(), ChatItem::MESSAGE_MIN_HEIGHT)                           ; },
 
           [this](const Widget *, int drawDstX, int drawDstY)
           {
@@ -200,7 +207,7 @@ ChatItem::ChatItem(
           },
       }
 
-    , msgref(argMessageRefStr ? new ChatItemRef
+    , msgref(argMsgRefID.has_value() ? new ChatItemRef
       {
           DIR_UPLEFT,
           0,
@@ -210,44 +217,56 @@ ChatItem::ChatItem(
           false,
           false,
 
+          argMsgRefID.value(),
           to_cstr(argMessageRefStr),
       } : nullptr)
 {
+    disableSetSize();
+
     if(avatarLeft){
-        addChild(&avatar, DIR_UPLEFT, 0, 0, false);
+        addChildAt(&avatar, DIR_UPLEFT, 0, 0, false);
         if(showName){
-            addChild(&name      , DIR_LEFT  ,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP + ChatItem::TRIANGLE_WIDTH                           , ChatItem::NAME_HEIGHT / 2                       , false);
-            addChild(&background, DIR_UPLEFT,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP                                                      , ChatItem::NAME_HEIGHT                           , false);
-            addChild(&message   , DIR_UPLEFT,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP + ChatItem::TRIANGLE_WIDTH + ChatItem::MESSAGE_MARGIN, ChatItem::NAME_HEIGHT + ChatItem::MESSAGE_MARGIN, false);
+            addChildAt(&name      , DIR_LEFT  ,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP + ChatItem::TRIANGLE_WIDTH                           , ChatItem::NAME_HEIGHT / 2                       , false);
+            addChildAt(&background, DIR_UPLEFT,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP                                                      , ChatItem::NAME_HEIGHT                           , false);
+            addChildAt(&message   , DIR_UPLEFT,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP + ChatItem::TRIANGLE_WIDTH + ChatItem::MESSAGE_MARGIN, ChatItem::NAME_HEIGHT + ChatItem::MESSAGE_MARGIN, false);
         }
         else{
-            addChild(&background, DIR_UPLEFT,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP                                                      , 0                                               , false);
-            addChild(&message   , DIR_UPLEFT,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP + ChatItem::TRIANGLE_WIDTH + ChatItem::MESSAGE_MARGIN, ChatItem::MESSAGE_MARGIN                        , false);
+            addChildAt(&background, DIR_UPLEFT,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP                                                      , 0                                               , false);
+            addChildAt(&message   , DIR_UPLEFT,                  ChatItem::AVATAR_WIDTH + ChatItem::GAP + ChatItem::TRIANGLE_WIDTH + ChatItem::MESSAGE_MARGIN, ChatItem::MESSAGE_MARGIN                        , false);
         }
     }
     else{
-        const auto realWidth = ChatItem::AVATAR_WIDTH + ChatItem::GAP + ChatItem::TRIANGLE_WIDTH + std::max<int>({
-            name.w(),
-            std::max<int>(message.w(), ChatItem::MESSAGE_MIN_WIDTH) + ChatItem::MESSAGE_MARGIN * 2,
-            msgref ? msgref->w() : 0,
-        });
+        const auto fnRealWidth = [this]()
+        {
+            return ChatItem::AVATAR_WIDTH + ChatItem::GAP + ChatItem::TRIANGLE_WIDTH + std::max<int>
+            ({
+                showName ? name.w() : 0,
+                std::max<int>(message.w(), ChatItem::MESSAGE_MIN_WIDTH) + ChatItem::MESSAGE_MARGIN * 2,
+                msgref ? msgref->w() : 0,
+            });
+        };
 
-        addChild(&avatar, DIR_UPRIGHT, realWidth - 1, 0, false);
+        addChildAt(&avatar, DIR_UPRIGHT, [fnRealWidth](const Widget *){ return fnRealWidth() - 1; }, 0, false);
         if(showName){
-            addChild(&name      , DIR_RIGHT  , realWidth - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP - ChatItem::TRIANGLE_WIDTH                           , ChatItem::NAME_HEIGHT / 2                       , false);
-            addChild(&background, DIR_UPRIGHT, realWidth - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP                                                      , ChatItem::NAME_HEIGHT                           , false);
-            addChild(&message   , DIR_UPRIGHT, realWidth - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP - ChatItem::TRIANGLE_WIDTH - ChatItem::MESSAGE_MARGIN, ChatItem::NAME_HEIGHT + ChatItem::MESSAGE_MARGIN, false);
+            addChildAt(&name      , DIR_RIGHT  , [fnRealWidth](const Widget *){ return fnRealWidth() - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP - ChatItem::TRIANGLE_WIDTH                           ; }, ChatItem::NAME_HEIGHT / 2                       , false);
+            addChildAt(&background, DIR_UPRIGHT, [fnRealWidth](const Widget *){ return fnRealWidth() - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP                                                      ; }, ChatItem::NAME_HEIGHT                           , false);
+            addChildAt(&message   , DIR_UPRIGHT, [fnRealWidth](const Widget *){ return fnRealWidth() - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP - ChatItem::TRIANGLE_WIDTH - ChatItem::MESSAGE_MARGIN; }, ChatItem::NAME_HEIGHT + ChatItem::MESSAGE_MARGIN, false);
         }
         else{
-            addChild(&background, DIR_UPRIGHT, realWidth - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP                                                      , 0                                               , false);
-            addChild(&message   , DIR_UPRIGHT, realWidth - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP - ChatItem::TRIANGLE_WIDTH - ChatItem::MESSAGE_MARGIN, ChatItem::MESSAGE_MARGIN                        , false);
+            addChildAt(&background, DIR_UPRIGHT, [fnRealWidth](const Widget *){ return fnRealWidth() - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP                                                      ; }, 0                                               , false);
+            addChildAt(&message   , DIR_UPRIGHT, [fnRealWidth](const Widget *){ return fnRealWidth() - 1 - ChatItem::AVATAR_WIDTH - ChatItem::GAP - ChatItem::TRIANGLE_WIDTH - ChatItem::MESSAGE_MARGIN; }, ChatItem::MESSAGE_MARGIN                        , false);
         }
     }
 
     if(msgref){
-        if(avatarLeft) addChild(msgref, DIR_UPLEFT , message.dx()                   - ChatItem::MESSAGE_MARGIN, message.dy() + message.h() - 1 + ChatItem::REF_GAP, true);
-        else           addChild(msgref, DIR_UPRIGHT, message.dx() + message.w() - 1 + ChatItem::MESSAGE_MARGIN, message.dy() + message.h() - 1 + ChatItem::REF_GAP, true);
+        if(avatarLeft) addChildAt(msgref, DIR_UPLEFT , [this](const Widget *){ return message.dx()                   - ChatItem::MESSAGE_MARGIN; }, [this](const Widget *){ return message.dy() + message.h() - 1 + ChatItem::REF_GAP; }, true);
+        else           addChildAt(msgref, DIR_UPRIGHT, [this](const Widget *){ return message.dx() + message.w() - 1 + ChatItem::MESSAGE_MARGIN; }, [this](const Widget *){ return message.dy() + message.h() - 1 + ChatItem::REF_GAP; }, true);
     }
+}
+
+void ChatItem::setMaxWidth(int argWidth)
+{
+    message.setLineWidth(argWidth - ChatItem::AVATAR_WIDTH - ChatItem::GAP - ChatItem::TRIANGLE_WIDTH - ChatItem::MESSAGE_MARGIN * 2);
 }
 
 void ChatItem::update(double fUpdateTime)
@@ -270,13 +289,13 @@ bool ChatItem::processEventDefault(const SDL_Event &event, bool valid)
             && event.button.button == SDL_BUTTON_RIGHT
             && background.in(event.button.x, event.button.y)){
 
-        if(auto chatPage = dynamic_cast<ChatPage *>(parent(3))){
+        if(auto chatPage = hasParent<ChatPage>()){
             if(chatPage->menu){
                 chatPage->removeChild(chatPage->menu, true);
                 chatPage->menu = nullptr;
             }
 
-            chatPage->addChild((chatPage->menu = new MenuBoard
+            chatPage->addChildAt((chatPage->menu = new MenuBoard
             {
                 DIR_UPLEFT,
                 0,
@@ -294,9 +313,19 @@ bool ChatItem::processEventDefault(const SDL_Event &event, bool valid)
                     {(new LabelBoard(DIR_UPLEFT, 0, 0, u8"复制" , 1, 12, 0, colorf::WHITE + colorf::A_SHF(255)))->setData(std::make_any<std::string>("复制")), false, true},
                 },
 
-                [](Widget *item)
+                [this](Widget *item) // create new menu board whenever click a new chat item
                 {
                     if(const auto op = std::any_cast<std::string>(item->data()); op == "引用"){
+                        std::string textStr = message.getText(false);
+                        fflassert(utf8f::valid(textStr));
+
+                        if(const auto size = utf8::distance(textStr.begin(), textStr.end()); size > 50){
+                            auto p = textStr.begin();
+                            utf8::advance(p, 50, textStr.end());
+                            textStr.resize(std::distance(textStr.begin(), p));
+                            textStr.append("...");
+                        }
+                        hasParent<ChatPage>()->enableChatRef(msgID.value(), "<layout>" + xmlf::toParString("%s：%s", name.getText(false).c_str(), textStr.c_str()) + "</layout>");
                     }
                 },
             }),
@@ -319,7 +348,7 @@ bool ChatItem::processEventDefault(const SDL_Event &event, bool valid)
             setFocus(true);
         }
 
-        if(auto chatPage = dynamic_cast<ChatPage *>(parent(3))){
+        if(auto chatPage = hasParent<ChatPage>()){
             if(chatPage->menu){
                 chatPage->removeChild(chatPage->menu, true);
                 chatPage->menu = nullptr;

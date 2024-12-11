@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <string>
+#include <optional>
 #include <unordered_map>
 #include "serdesmsg.hpp"
 #include "widget.hpp"
@@ -30,7 +31,7 @@ struct ChatPage: public Widget
     //  g ---+ || |*****       |          ||           |         -    SEP_MARGIN * 2 - 1        // middle area between chat area and input area
     //  e    | || +------------+          ||           |         -  INPUT_MARGIN * 2            //
     //  |    | ||                         ||           |         - input.h()                    //
-    //  H    | ||       chat area         ||         | |         - (chatref.show() ? (chatref.h() + CHATREF_GAP) : 0)
+    //  H    | ||       chat area         ||         | |         - (showref() ? (chatref->h() + CHATREF_GAP) : 0)
     //  E    | ||                         ||         v v
     //  I    | |+-------------------------+|       | - -
     //  G    | +===========================+       v   SEP_MARGIN * 2 + 1
@@ -39,13 +40,13 @@ struct ChatPage: public Widget
     //       | ||  |*******************|  ||     ^ ^
     //       | ||  |****input area*****|  ||   | +---- input.h()
     //       | ||  |*******************|  || | v v
-    //       | | \ +-------------------+ / | v - -                +--- chatref.show() ? chatref.h() : 0
+    //       | | \ +-------------------+ / | v - -                +--- showref() ? chatref->h() : 0
     //       | |  +---------------------+  | - -                  |
     //       | |                           |   ^                  v
     //       | |+-------------------------+| - |                  -
     //       | ||        ChatRef      (x) || ^ +-- INPUT_MARGIN
     //       v |+-------------------------+| |                    -
-    //       - +---------------------------+ +---- chatref.show() ? CHATREF_GAP : 0
+    //       - +---------------------------+ +---- showref() ? CHATREF_GAP : 0
     //       ->||<---- UIPage_MARGIN
     //       -->| |<--  INPUT_CORNER
     //       -->|  |<-  INPUT_MARGIN
@@ -64,7 +65,8 @@ struct ChatPage: public Widget
     SDChatPeer peer;
     ShapeClipBoard background;
 
-    ChatItemRef        chatref;
+    ChatItemRef *chatref = nullptr;
+
     ChatInputContainer input;
     ChatItemContainer  chat;
 
@@ -80,5 +82,15 @@ struct ChatPage: public Widget
             Widget * = nullptr,
             bool     = false);
 
+    bool showref() const;
+    bool showmenu() const;
+
+    std::optional<uint64_t> refopt() const;
+
+    void  enableChatRef(uint64_t, std::string);
+    void disableChatRef();
+
+    void afterResizeDefault() override;
     bool processEventDefault(const SDL_Event &, bool) override;
+    static ChatItemRef *createChatItemRef(uint64_t, std::string, Widget *, bool);
 };

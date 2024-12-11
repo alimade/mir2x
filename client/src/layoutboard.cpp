@@ -137,6 +137,8 @@ LayoutBoard::LayoutBoard(
     , m_onCR(std::move(argOnCR))
     , m_eventCB(std::move(argEventCB))
 {
+    disableSetSize();
+
     for(size_t i = 0; i < m_parNodeConfig.margin.size(); ++i){
         if(m_parNodeConfig.margin[i] < 0){
             throw fflerror("invalid parNodeConfig::margin[%zu]: %d", i, m_parNodeConfig.margin[i]);
@@ -161,11 +163,21 @@ LayoutBoard::LayoutBoard(
     }
 }
 
+void LayoutBoard::updateGfx()
+{
+    tinyxml2::XMLDocument xmlDoc(true, tinyxml2::PEDANTIC_WHITESPACE);
+    for(int parIndex = 0, parTotalCount = parCount(); parIndex < parTotalCount; ++parIndex){
+        auto parNodeIter = ithParIterator(parIndex);
+        auto xmlNode = parNodeIter->tpset->getXMLNode()->DeepClone(&xmlDoc);
+
+        m_parNodeList.erase(parNodeIter);
+        addPar(parIndex, m_parNodeConfig.margin, xmlNode);
+    }
+}
+
 void LayoutBoard::loadXML(const char *xmlString, size_t parLimit)
 {
-    if(!xmlString){
-        throw fflerror("null xmlString");
-    }
+    fflassert(str_haschar(xmlString));
 
     m_parNodeList.clear();
     tinyxml2::XMLDocument xmlDoc(true, tinyxml2::PEDANTIC_WHITESPACE);
@@ -178,7 +190,7 @@ void LayoutBoard::loadXML(const char *xmlString, size_t parLimit)
     const auto rootElem = xmlDoc.RootElement();
 
     for(const char *cstr: {"layout", "Layout", "LAYOUT"}){
-        if(std::string(rootElem->Name()) == cstr){
+        if(to_sv(rootElem->Name()) == cstr){
             layoutXML = true;
             break;
         }
@@ -201,7 +213,7 @@ void LayoutBoard::loadXML(const char *xmlString, size_t parLimit)
 
         bool parXML = false;
         for(const char *cstr: {"par", "Par", "PAR"}){
-            if(std::string(p->Value()) == cstr){
+            if(to_sv(p->Value()) == cstr){
                 parXML = true;
                 break;
             }
@@ -234,7 +246,7 @@ void LayoutBoard::addPar(int loc, const std::array<int, 4> &parMargin, const tin
 
     bool parXML = false;
     for(const char *cstr: {"par", "Par", "PAR"}){
-        if(std::string(elemNode->Name()) == cstr){
+        if(to_sv(elemNode->Name()) == cstr){
             parXML = true;
             break;
         }
@@ -269,11 +281,11 @@ void LayoutBoard::addPar(int loc, const std::array<int, 4> &parMargin, const tin
     const int lineAlign = [elemNode, this]()
     {
         if(const auto val = elemNode->Attribute("align")){
-            if(std::string(val) == "left"       ) return LALIGN_LEFT;
-            if(std::string(val) == "right"      ) return LALIGN_RIGHT;
-            if(std::string(val) == "center"     ) return LALIGN_CENTER;
-            if(std::string(val) == "justify"    ) return LALIGN_JUSTIFY;
-            if(std::string(val) == "distributed") return LALIGN_DISTRIBUTED;
+            if(to_sv(val) == "left"       ) return LALIGN_LEFT;
+            if(to_sv(val) == "right"      ) return LALIGN_RIGHT;
+            if(to_sv(val) == "center"     ) return LALIGN_CENTER;
+            if(to_sv(val) == "justify"    ) return LALIGN_JUSTIFY;
+            if(to_sv(val) == "distributed") return LALIGN_DISTRIBUTED;
         }
         return m_parNodeConfig.align;
     }();
@@ -437,13 +449,49 @@ void LayoutBoard::drawEx(int dstX, int dstY, int srcX, int srcY, int srcW, int s
     }
 }
 
-void LayoutBoard::setLineWidth(int lineWidth)
+void LayoutBoard::setFont(uint8_t argFont)
 {
-    m_parNodeConfig.lineWidth = lineWidth;
+    m_parNodeConfig.font = argFont;
+    updateGfx();
+}
+
+void LayoutBoard::setFontSize(uint8_t argFontSize)
+{
+    m_parNodeConfig.fontSize = argFontSize;
+    updateGfx();
+}
+
+void LayoutBoard::setFontStyle(uint8_t argFontStyle)
+{
+    m_parNodeConfig.fontStyle = argFontStyle;
+    updateGfx();
+}
+
+void LayoutBoard::setFontColor(uint32_t argFontColor)
+{
+    m_parNodeConfig.fontColor = argFontColor;
+    updateGfx();
+}
+
+void LayoutBoard::setFontBGColor(uint32_t argFontBGColor)
+{
+    m_parNodeConfig.fontBGColor = argFontBGColor;
+    updateGfx();
+}
+
+void LayoutBoard::setLineWidth(int argLineWidth)
+{
+    const auto cursorOff = m_canEdit ? ithParIterator(m_cursorLoc.par)->tpset->cursorLoc2Off(m_cursorLoc.x, m_cursorLoc.y) : -1;
+    m_parNodeConfig.lineWidth = argLineWidth;
+
     for(auto &node: m_parNodeList){
-        node.tpset->setLineWidth(lineWidth);
+        node.tpset->setLineWidth(argLineWidth);
     }
+
     setupStartY(0);
+    if(m_canEdit){
+        std::tie(m_cursorLoc.x, m_cursorLoc.y) = ithParIterator(m_cursorLoc.par)->tpset->cursorOff2Loc(cursorOff);
+    }
 }
 
 bool LayoutBoard::processEventDefault(const SDL_Event &event, bool valid)
@@ -732,6 +780,18 @@ std::string LayoutBoard::getXML() const
 
     xmlString.append("</layout>");
     return xmlString;
+}
+
+std::string LayoutBoard::getText(bool textOnly) const
+{
+    std::string text;
+    for(const auto &node: m_parNodeList){
+        if(!text.empty()){
+            text.append(" ");
+        }
+        text.append(node.tpset->getText(textOnly));
+    }
+    return text;
 }
 
 const char * LayoutBoard::findAttrValue(const std::unordered_map<std::string, std::string> &attrList, const char *key, const char *valDefault)

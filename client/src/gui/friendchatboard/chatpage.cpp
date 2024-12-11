@@ -40,7 +40,7 @@ ChatPage::ChatPage(
           [this](const Widget *, int drawDstX, int drawDstY)
           {
               // ChatPage = top + sepLine + bottom
-              const int bottomHeight = UIPage_MARGIN + ChatPage::SEP_MARGIN + ChatPage::INPUT_MARGIN * 2 + input.h() + (chatref.show() ? (chatref.h() + ChatPage::CHATREF_GAP) : 0);
+              const int bottomHeight = UIPage_MARGIN + ChatPage::SEP_MARGIN + ChatPage::INPUT_MARGIN * 2 + input.h() + (showref() ? (chatref->h() + ChatPage::CHATREF_GAP) : 0);
               const int sepLineDY    = h() - bottomHeight - 1;
 
               g_sdlDevice->drawLine(
@@ -88,29 +88,13 @@ ChatPage::ChatPage(
           false,
       }
 
-    , chatref
-      {
-          DIR_DOWNLEFT,
-          UIPage_MARGIN,
-          [this](const Widget *){ return h() - UIPage_MARGIN - 1; },
-
-          w() - 24, // can not stretch
-          true,
-          true,
-
-          "<layout><par>这里是引用</par></layout>",
-
-          this,
-          false,
-      }
-
     , input
       {
           DIR_DOWNLEFT,
           UIPage_MARGIN + ChatPage::INPUT_MARGIN,
           [this](const Widget *)
           {
-              return h() - UIPage_MARGIN - (chatref.show() ? (chatref.h() + ChatPage::CHATREF_GAP) : 0) - ChatPage::INPUT_MARGIN - 1;
+              return h() - UIPage_MARGIN - (showref() ? (chatref->h() + ChatPage::CHATREF_GAP) : 0) - ChatPage::INPUT_MARGIN - 1;
           },
 
           [this](const Widget *)
@@ -135,13 +119,59 @@ ChatPage::ChatPage(
 
           [this](const Widget *)
           {
-              return h() - UIPage_MARGIN * 2 - ChatPage::SEP_MARGIN * 2 - 1 - ChatPage::INPUT_MARGIN * 2 - input.h() - (chatref.show() ? (chatref.h() + ChatPage::CHATREF_GAP) : 0);
+              return h() - UIPage_MARGIN * 2 - ChatPage::SEP_MARGIN * 2 - 1 - ChatPage::INPUT_MARGIN * 2 - input.h() - (showref() ? (chatref->h() + ChatPage::CHATREF_GAP) : 0);
           },
 
           this,
           false,
       }
 {}
+
+bool ChatPage::showref() const
+{
+    return chatref && chatref->show();
+}
+
+bool ChatPage::showmenu() const
+{
+    return menu && menu->show();
+}
+
+std::optional<uint64_t> ChatPage::refopt() const
+{
+    if(showref()){
+        return chatref->refer();
+    }
+    return std::nullopt;
+}
+
+void ChatPage::enableChatRef(uint64_t refMsgID, std::string xmlStr)
+{
+    if(chatref){
+        removeChild(chatref, true);
+    }
+    chatref = ChatPage::createChatItemRef(refMsgID, std::move(xmlStr), this, true);
+}
+
+void ChatPage::disableChatRef()
+{
+    if(chatref){
+        removeChild(chatref, true);
+        chatref = nullptr;
+    }
+}
+
+void ChatPage::afterResizeDefault()
+{
+    chat .afterResize();
+    input.afterResize();
+
+    if(!showref()){
+        return;
+    }
+
+    enableChatRef(chatref->refer(), chatref->getXML());
+}
 
 bool ChatPage::processEventDefault(const SDL_Event &event, bool valid)
 {
@@ -153,8 +183,16 @@ bool ChatPage::processEventDefault(const SDL_Event &event, bool valid)
         return consumeFocus(false);
     }
 
-    if(chatref.processEvent(event, valid)){
-        return true;
+    if(showref()){
+        if(chatref->processEvent(event, valid)){
+            return true;
+        }
+    }
+
+    if(showmenu()){
+        if(menu->processEvent(event, valid)){
+            return true;
+        }
     }
 
     switch(event.type){
@@ -203,4 +241,24 @@ bool ChatPage::processEventDefault(const SDL_Event &event, bool valid)
                 return Widget::processEventDefault(event, valid);
             }
     }
+}
+
+ChatItemRef *ChatPage::createChatItemRef(uint64_t msgID, std::string xmlStr, Widget *self, bool autoDelete)
+{
+    return new ChatItemRef
+    {
+        DIR_DOWNLEFT,
+        UIPage_MARGIN,
+        [self](const Widget *){ return self->h() - UIPage_MARGIN - 1; },
+
+        self->w() - 24, // can not stretch
+        true,
+        true,
+
+        msgID,
+        xmlStr.c_str(),
+
+        self,
+        autoDelete,
+    };
 }

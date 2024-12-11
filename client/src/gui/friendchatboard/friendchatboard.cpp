@@ -974,12 +974,14 @@ bool FriendChatBoard::processEventDefault(const SDL_Event &event, bool valid)
             {
                 if(event.motion.state & SDL_BUTTON_LMASK){
                     if(m_dragIndex.has_value()){
-                        const auto fnAdjustW = [this](int dw, bool adjustOff)
+                        bool sizeChanged = false;
+                        const auto fnAdjustW = [&sizeChanged, this](int dw, bool adjustOff)
                         {
                             const int oldW = w();
                             const int newW = std::max<int>(oldW + dw, UIPage_BORDER[2] + UIPage_MIN_WIDTH + UIPage_BORDER[3]);
 
                             if(oldW != newW){
+                                sizeChanged = true;
                                 setW(newW);
                                 if(adjustOff){
                                     moveBy(oldW - newW, 0);
@@ -987,12 +989,13 @@ bool FriendChatBoard::processEventDefault(const SDL_Event &event, bool valid)
                             }
                         };
 
-                        const auto fnAdjustH = [this](int dh, bool adjustOff)
+                        const auto fnAdjustH = [&sizeChanged, this](int dh, bool adjustOff)
                         {
                             const int oldH = h();
                             const int newH = std::max<int>(oldH + dh, UIPage_BORDER[0] + UIPage_MIN_HEIGHT + UIPage_BORDER[1]);
 
                             if(oldH != newH){
+                                sizeChanged = true;
                                 setH(newH);
                                 if(adjustOff){
                                     moveBy(0, oldH - newH);
@@ -1008,6 +1011,10 @@ bool FriendChatBoard::processEventDefault(const SDL_Event &event, bool valid)
                         else if(m_dragIndex.value() == 5){ fnAdjustW(-event.motion.xrel, 1); fnAdjustH( event.motion.yrel, 0); }
                         else if(m_dragIndex.value() == 6){                                   fnAdjustH( event.motion.yrel, 0); }
                         else                             { fnAdjustW( event.motion.xrel, 0); fnAdjustH( event.motion.yrel, 0); }
+
+                        if(sizeChanged){
+                            afterResize();
+                        }
                     }
                     else{
                         const auto [rendererW, rendererH] = g_sdlDevice->getRendererSize();
@@ -1021,7 +1028,7 @@ bool FriendChatBoard::processEventDefault(const SDL_Event &event, bool valid)
                     }
                     return consumeFocus(true);
                 }
-                return consumeFocus(false);
+                return false;
             }
         case SDL_MOUSEWHEEL:
             {
@@ -1107,6 +1114,38 @@ const SDChatPeer *FriendChatBoard::findChatPeer(const SDChatPeerID &sdCPID) cons
     }
 
     return nullptr;
+}
+
+void FriendChatBoard::queryChatMessage(uint64_t argMsgID, std::function<void(const SDChatMessage *, bool)> argOp)
+{
+    if(auto p = m_cachedChatMessageList.find(argMsgID); p != m_cachedChatMessageList.end()){
+        if(argOp){
+            argOp(std::addressof(p->second), false);
+        }
+    }
+
+    else{
+        CMQueryChatMessage cmQCM;
+        std::memset(&cmQCM, 0, sizeof(cmQCM));
+
+        cmQCM.msgid = argMsgID;
+        g_client->send({CM_QUERYCHATMESSAGE, cmQCM}, [argMsgID, argOp = std::move(argOp), this](uint8_t headCode, const uint8_t *data, size_t size)
+        {
+            if(headCode == SM_OK){
+                const auto sdCM = cerealf::deserialize<SDChatMessage>(data, size);
+                fflassert(sdCM.seq.has_value());
+                fflassert(sdCM.seq.value().id == argMsgID);
+
+                auto iter = m_cachedChatMessageList.emplace(argMsgID, sdCM);
+                if(argOp){
+                    argOp(std::addressof(iter.first->second), true);
+                }
+            }
+            else if(argOp){
+                argOp(nullptr, true);
+            }
+        });
+    }
 }
 
 void FriendChatBoard::queryChatPeer(const SDChatPeerID &sdCPID, std::function<void(const SDChatPeer *, bool)> argOp)
@@ -1215,8 +1254,9 @@ void FriendChatBoard::addMessage(std::optional<uint64_t> localPendingID, const S
         else{
             if(chatPage->peer.cpid() == peerIter->cpid){
                 if(localPendingID.has_value()){
-                    if(auto p = chatPage->chat.canvas.hasChild(localPendingID.value())){
+                    if(auto p = chatPage->chat.canvas.hasDescendant(localPendingID.value())){
                         dynamic_cast<ChatItem *>(p)->pending = false;
+                        dynamic_cast<ChatItem *>(p)->msgID   = sdCM.seq.value().id;
                     }
                 }
                 else{

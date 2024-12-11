@@ -5,11 +5,23 @@
 #include "xmlf.hpp"
 #include "fflerror.hpp"
 
+bool xmlf::checkNodeName(const tinyxml2::XMLNode *node, const char *value, bool exact)
+{
+    fflassert(node);
+    fflassert(node->ToElement());
+    fflassert(str_haschar(value));
+
+    if(exact){
+        return std::strcmp(node->Value(), value) == 0;
+    }
+    else{
+        return str_toupper(node->Value()) == str_toupper(value);
+    }
+}
+
 bool xmlf::checkTextLeaf(const tinyxml2::XMLNode *node)
 {
-    if(!node){
-        throw fflerror("invalid argument: nullptr");
-    }
+    fflassert(node);
 
     if(!node->NoChildren()){
         return false;
@@ -20,9 +32,7 @@ bool xmlf::checkTextLeaf(const tinyxml2::XMLNode *node)
 
 bool xmlf::checkEmojiLeaf(const tinyxml2::XMLNode *node)
 {
-    if(!node){
-        throw fflerror("invalid argument: nullptr");
-    }
+    fflassert(node);
 
     if(!node->NoChildren()){
         return false;
@@ -49,9 +59,7 @@ bool xmlf::checkEmojiLeaf(const tinyxml2::XMLNode *node)
 
 bool xmlf::checkImageLeaf(const tinyxml2::XMLNode *node)
 {
-    if(!node){
-        throw fflerror("invalid argument: nullptr");
-    }
+    fflassert(node);
 
     if(!node->NoChildren()){
         return false;
@@ -78,22 +86,15 @@ bool xmlf::checkImageLeaf(const tinyxml2::XMLNode *node)
 
 bool xmlf::checkValidLeaf(const tinyxml2::XMLNode *node)
 {
-    if(!node){
-        throw fflerror("invalid argument: nullptr");
-    }
-
-    if(!node->NoChildren()){
-        throw fflerror("invalid argument: not a leaf");
-    }
+    fflassert(node);
+    fflassert(node->NoChildren());
 
     return checkTextLeaf(node) || checkEmojiLeaf(node) || checkImageLeaf(node);
 }
 
 const char *xmlf::findAttribute(const tinyxml2::XMLNode *node, const char *attributeName, bool recursive)
 {
-    if(!node){
-        throw fflerror("invalid argument: (nullptr)");
-    }
+    fflassert(node);
 
     for(; node; node = node->Parent()){
         if(auto element = node->ToElement()){
@@ -109,34 +110,41 @@ const char *xmlf::findAttribute(const tinyxml2::XMLNode *node, const char *attri
     return nullptr;
 }
 
-
-tinyxml2::XMLNode *xmlf::getNextLeaf(tinyxml2::XMLNode *node)
+bool xmlf::hasChild(tinyxml2::XMLNode *root, tinyxml2::XMLNode *child)
 {
-    if(!node){
-        throw fflerror("invalid argument: (nullptr)");
-    }
+    fflassert(root);
+    fflassert(child);
 
-    if(!node->NoChildren()){
-        throw fflerror("invalid argument: [%p] is not a leaf node", to_cvptr(node));
-    }
-
-    if(auto next = node->NextSibling()){
-        return xmlf::getNodeFirstLeaf(next);
-    }
-
-    for(auto parent = node->Parent(); parent; parent = parent->Parent()){
-        if(auto uncle = parent->NextSibling()){
-            return xmlf::getNodeFirstLeaf(uncle);
+    while(child){
+        if(child == root){
+            return true;
         }
+        child = child->Parent();
+    }
+    return false;
+}
+
+tinyxml2::XMLNode *xmlf::getNextLeaf(tinyxml2::XMLNode *node, tinyxml2::XMLNode *root)
+{
+    fflassert(node);
+    fflassert(node->NoChildren());
+
+    if(root){
+        fflassert(xmlf::hasChild(root, node));
+    }
+
+    while(node && (node != root)){
+        if(auto next = node->NextSibling()){
+            return xmlf::getNodeFirstLeaf(next);
+        }
+        node = node->Parent();
     }
     return nullptr;
 }
 
 tinyxml2::XMLNode *xmlf::getNodeFirstLeaf(tinyxml2::XMLNode *node)
 {
-    if(!node){
-        throw fflerror("invalid argument: (nullptr)");
-    }
+    fflassert(node);
 
     while(!node->NoChildren()){
         node = node->FirstChild();
@@ -144,32 +152,14 @@ tinyxml2::XMLNode *xmlf::getNodeFirstLeaf(tinyxml2::XMLNode *node)
     return node;
 }
 
-tinyxml2::XMLNode *xmlf::getTreeFirstLeaf(tinyxml2::XMLNode *node)
-{
-    if(!node){
-        throw fflerror("invalid argument: (nullptr)");
-    }
-    return getNodeFirstLeaf(node->GetDocument()->FirstChild());
-}
-
 tinyxml2::XMLNode *xmlf::getNodeLastLeaf(tinyxml2::XMLNode *node)
 {
-    if(!node){
-        throw fflerror("invalid argument: (nullptr)");
-    }
+    fflassert(node);
 
     while(!node->NoChildren()){
         node = node->LastChild();
     }
     return node;
-}
-
-tinyxml2::XMLNode *xmlf::getTreeLastLeaf(tinyxml2::XMLNode *node)
-{
-    if(!node){
-        throw fflerror("invalid argument: (nullptr)");
-    }
-    return getNodeLastLeaf(node->GetDocument()->LastChild());
 }
 
 bool xmlf::validTagName(const std::string &tagName)
@@ -236,5 +226,13 @@ std::string xmlf::toParString(const char *format, ...)
 
     xmlDoc.RootElement()->SetText(text.c_str());
     xmlDoc.Print(&printer);
+    return printer.CStr();
+}
+
+std::string xmlf::toString(const tinyxml2::XMLNode *node)
+{
+    fflassert(node);
+    tinyxml2::XMLPrinter printer;
+    node->Accept(&printer);
     return printer.CStr();
 }

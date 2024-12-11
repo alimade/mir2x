@@ -33,8 +33,8 @@ class WidgetTreeNode // tree concept, used by class Widget only
     private:
         friend class Widget;
 
-    private:
-        struct WidgetChildElement
+    protected:
+        struct ChildElement final
         {
             Widget *widget     = nullptr;
             bool    autoDelete = false;
@@ -50,7 +50,7 @@ class WidgetTreeNode // tree concept, used by class Widget only
         Widget * m_parent;
 
     private:
-        std::list<WidgetChildElement> m_childList; // widget shall NOT access this list directly
+        std::list<WidgetTreeNode::ChildElement> m_childList; // widget shall NOT access this list directly
 
     private:
         std::vector<Widget *> m_delayList;
@@ -225,10 +225,7 @@ class WidgetTreeNode // tree concept, used by class Widget only
             for(auto &child: m_childList){
                 if(child.widget){
                     if(f(child.widget, child.autoDelete)){
-                        if(child.autoDelete){
-                            m_delayList.push_back(child.widget);
-                        }
-                        child.widget = nullptr;
+                        removeChildElement(child, true);
                     }
                 }
             }
@@ -239,13 +236,19 @@ class WidgetTreeNode // tree concept, used by class Widget only
             clearChild([](const Widget *, bool){ return true; });
         }
 
+    protected:
+        virtual void removeChildElement(WidgetTreeNode::ChildElement &, bool);
+
     public:
         virtual void purge();
         virtual void removeChild(Widget *, bool);
 
+    private:
+        virtual void doAddChild(Widget *, bool) final;
+
     public:
-        virtual void addChild(Widget *, bool);
-        virtual void addChild(Widget *, WidgetTreeNode::VarDir, WidgetTreeNode::VarOff, WidgetTreeNode::VarOff, bool);
+        virtual void addChild  (Widget *, bool);
+        virtual void addChildAt(Widget *, WidgetTreeNode::VarDir, WidgetTreeNode::VarOff, WidgetTreeNode::VarOff, bool);
 
     public:
         bool hasChild() const;
@@ -274,6 +277,18 @@ class WidgetTreeNode // tree concept, used by class Widget only
             }
             return nullptr;
         }
+
+    public:
+        /**/  Widget *hasDescendant(uint64_t);
+        const Widget *hasDescendant(uint64_t) const;
+
+    public:
+        /**/  Widget *hasDescendant(std::invocable<const Widget *, bool> auto);
+        const Widget *hasDescendant(std::invocable<const Widget *, bool> auto) const;
+
+    public:
+        template<std::derived_from<Widget> T> /**/  T *hasParent();
+        template<std::derived_from<Widget> T> const T *hasParent() const;
 };
 
 class Widget: public WidgetTreeNode
@@ -283,6 +298,9 @@ class Widget: public WidgetTreeNode
         using WidgetTreeNode::VarOff;
         using WidgetTreeNode::VarSize;
         using WidgetTreeNode::VarFlag;
+
+    public:
+        using WidgetTreeNode::ChildElement;
 
     public:
         static bool hasIntDir(const Widget::VarDir &varDir)
@@ -447,6 +465,9 @@ class Widget: public WidgetTreeNode
         std::pair<Widget::VarOff, int> m_y;
 
     private:
+        bool m_disableSetSize = false;
+
+    private:
         Widget::VarSize m_w;
         Widget::VarSize m_h;
 
@@ -455,6 +476,7 @@ class Widget: public WidgetTreeNode
         mutable bool m_wCalc = false;
 
     private:
+        std::function<void(Widget *)> m_afterResizeHandler;
         std::function<bool(Widget *, const SDL_Event &, bool)> m_processEventHandler;
 
     public:
@@ -492,7 +514,7 @@ class Widget: public WidgetTreeNode
 
             for(auto &[childPtr, offDir, offX, offY, autoDelete]: argChildList){
                 if(childPtr){
-                    addChild(childPtr, std::move(offDir), std::move(offX), std::move(offY), autoDelete);
+                    addChildAt(childPtr, std::move(offDir), std::move(offX), std::move(offY), autoDelete);
                 }
             }
         }
@@ -654,6 +676,12 @@ class Widget: public WidgetTreeNode
         }
 
     public:
+        Widget *setProcessEvent(std::function<bool(Widget *, const SDL_Event &, bool)> argHandler)
+        {
+            m_processEventHandler = std::move(argHandler);
+            return this;
+        }
+
         virtual bool processEvent(const SDL_Event &event, bool valid) final
         {
             if(m_processEventHandler){
@@ -672,6 +700,26 @@ class Widget: public WidgetTreeNode
         // this function alters the draw order
         // if a widget has children having overlapping then be careful
         virtual bool processEventDefault(const SDL_Event &, bool);
+
+    public:
+        Widget *setAfterResize(std::function<void(Widget *)> argHandler)
+        {
+            m_afterResizeHandler = std::move(argHandler);
+            return this;
+        }
+
+        virtual void afterResize() final
+        {
+            if(m_afterResizeHandler){
+                m_afterResizeHandler(this);
+            }
+            else{
+                afterResizeDefault();
+            }
+        }
+
+    protected:
+        virtual void afterResizeDefault();
 
     public:
         virtual dir8_t dir() const
@@ -985,27 +1033,86 @@ class Widget: public WidgetTreeNode
         }
 
     public:
-        Widget *setW(Widget::VarSize argSize) { m_w = std::move(argSize); return this; }
-        Widget *setH(Widget::VarSize argSize) { m_h = std::move(argSize); return this; }
-
-    public:
-        Widget *setSize(Widget::VarSize argW, Widget::VarSize argH)
+        Widget *disableSetSize()
         {
-            m_w = std::move(argW);
-            m_h = std::move(argH);
+            m_disableSetSize = true; // can not flip back
             return this;
         }
 
     public:
-        virtual void afterResize()
+        virtual Widget *setW(Widget::VarSize argSize) final
         {
-            foreachChild([](Widget *child, bool){ child->afterResize(); });
+            if(m_disableSetSize){
+                throw fflerror("can not resize %s", name());
+            }
+
+            m_w = std::move(argSize);
+            return this;
+        }
+
+        virtual Widget *setH(Widget::VarSize argSize) final
+        {
+            if(m_disableSetSize){
+                throw fflerror("can not resize %s", name());
+            }
+
+            m_h = std::move(argSize);
+            return this;
         }
 
     public:
-        Widget *setProcessEvent(std::function<bool(Widget *, const SDL_Event &, bool)> argHandler)
+        virtual Widget *setSize(Widget::VarSize argW, Widget::VarSize argH) final
         {
-            m_processEventHandler = std::move(argHandler);
-            return this;
+            return setW(std::move(argW))->setH(std::move(argH));
         }
 };
+
+Widget *WidgetTreeNode::hasDescendant(std::invocable<const Widget *, bool> auto f)
+{
+    for(auto &child: m_childList){
+        if(child.widget){
+            if(f(child.widget, child.autoDelete)){
+                return child.widget;
+            }
+            else if(auto descendant = child.widget->hasDescendant(f)){
+                return descendant;
+            }
+        }
+    }
+    return nullptr;
+}
+
+const Widget *WidgetTreeNode::hasDescendant(std::invocable<const Widget *, bool> auto f) const
+{
+    for(auto &child: m_childList){
+        if(child.widget){
+            if(f(child.widget, child.autoDelete)){
+                return child.widget;
+            }
+            else if(auto descendant = child.widget->hasDescendant(f)){
+                return descendant;
+            }
+        }
+    }
+    return nullptr;
+}
+
+template<std::derived_from<Widget> T> T *WidgetTreeNode::hasParent()
+{
+    for(auto p = parent(); p; p = p->parent()){
+        if(dynamic_cast<T *>(p)){
+            return static_cast<T *>(p);
+        }
+    }
+    return nullptr;
+}
+
+template<std::derived_from<Widget> T> const T *WidgetTreeNode::hasParent() const
+{
+    for(auto p = parent(); p; p = p->parent()){
+        if(dynamic_cast<const T *>(p)){
+            return static_cast<const T *>(p);
+        }
+    }
+    return nullptr;
+}

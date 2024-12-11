@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <utility>
 #include <initializer_list>
 #include "widget.hpp"
 
@@ -7,6 +8,9 @@ class ItemFlex: public Widget
 {
     private:
         const bool m_hbox;
+
+    private:
+        Widget::VarOff m_itemSpace;
         std::vector<Widget *> m_origChildList;
 
     public:
@@ -16,7 +20,9 @@ class ItemFlex: public Widget
                 Widget::VarOff argY,
 
                 Widget::VarSize argVarSize,
+
                 bool argHBox,
+                Widget::VarOff argItemSpace = 0,
 
                 std::initializer_list<std::pair<Widget *, bool>> argChildList = {},
 
@@ -37,27 +43,38 @@ class ItemFlex: public Widget
                   argParent,
                   argAutoDelete,
               }
+
             , m_hbox(argHBox)
+            , m_itemSpace(std::move(argItemSpace))
         {
             for(auto [widget, autoDelete]: argChildList){
-                appendItem(widget, autoDelete);
+                addChild(widget, autoDelete);
             }
         }
 
     public:
-        void appendItem(Widget *argWidget, bool argAutoDelete)
+        void addChild(Widget *argWidget, bool argAutoDelete) override
         {
             m_origChildList.push_back(argWidget);
             if(m_hbox){
-                addChild(argWidget, DIR_UPLEFT, [this](const Widget *self)
+                addChildAt(argWidget, DIR_UPLEFT, [this](const Widget *self)
                 {
+                    const int itemSpace = std::max<int>(0, Widget::evalOff(m_itemSpace, this));
                     int offset = 0;
+
                     for(auto widget: m_origChildList){
                         if(widget == self){
                             break;
                         }
+
+                        if(!widget->show()){
+                            continue;
+                        }
+
                         offset += widget->w();
+                        offset += itemSpace;
                     }
+
                     return offset;
                 },
 
@@ -65,19 +82,35 @@ class ItemFlex: public Widget
                 argAutoDelete);
             }
             else{
-                addChild(argWidget, DIR_UPLEFT, 0, [this](const Widget *self)
+                addChildAt(argWidget, DIR_UPLEFT, 0, [this](const Widget *self)
                 {
+                    const int itemSpace = std::max<int>(0, Widget::evalOff(m_itemSpace, this));
                     int offset = 0;
+
                     for(auto widget: m_origChildList){
                         if(widget == self){
                             break;
                         }
+
+                        if(!widget->show()){
+                            continue;
+                        }
+
                         offset += widget->h();
+                        offset += itemSpace;
                     }
+
                     return offset;
                 },
 
                 argAutoDelete);
             }
+        }
+
+    public:
+        void removeChildElement(Widget::ChildElement &argChild, bool argTrigger) override
+        {
+            std::erase(m_origChildList, argChild.widget);
+            Widget::removeChildElement(argChild, argTrigger);
         }
 };

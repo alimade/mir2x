@@ -82,26 +82,29 @@ ChatInputContainer::ChatInputContainer(
 
               const SDChatMessage chatMessage
               {
+                  .refer = chatPage->refopt(),
                   .from  = chatBoard->m_processRun->getMyHero()->cpid(),
                   .to    = chatPage->peer.cpid(),
                   .message = cerealf::serialize(message),
               };
 
+              chatPage->disableChatRef();
               chatPage->chat.append(chatMessage, [chatMessage, this](const ChatItem *chatItem)
               {
-                  const uint64_t cpidu64 = chatMessage.to.asU64();
+                  CMChatMessageHeader cmCMH;
+                  std::memset(&cmCMH, 0, sizeof(cmCMH));
 
-                  auto cpidsv  = as_sv(cpidu64);
-                  auto msgbuf  = std::string();
+                  cmCMH.toCPID = chatMessage.to.asU64();
+                  cmCMH.hasRef = to_boolint(chatMessage.refer.has_value());
+                  cmCMH.refID  = chatMessage.refer.value_or(0);
 
-                  msgbuf.append(cpidsv.begin(), cpidsv.end());
+                  std::string msgbuf;
+                  msgbuf = as_sv(cmCMH);
                   msgbuf.append(chatMessage.message.begin(), chatMessage.message.end());
 
                   const auto widgetID = chatItem->id();
-                  const auto chatItemCanvas = std::addressof(dynamic_cast<ChatPage *>(parent())->chat.canvas);
-
                   FriendChatBoard::getParentBoard(this)->addMessagePending(widgetID, chatMessage);
-                  g_client->send({CM_CHATMESSAGE, msgbuf}, [widgetID, chatItemCanvas, chatMessage, this](uint8_t headCode, const uint8_t *buf, size_t bufSize)
+                  g_client->send({CM_CHATMESSAGE, msgbuf}, [widgetID, this](uint8_t headCode, const uint8_t *buf, size_t bufSize)
                   {
                       switch(headCode){
                           case SM_OK:
@@ -130,4 +133,8 @@ ChatInputContainer::ChatInputContainer(
     // layout always attach to buttom of input container, so argX needs container height
     // in initialization list we can not call this->h() since initialization of layout is not done yet
     layout.moveAt(DIR_DOWNLEFT, 0, [this](const Widget *){ return this->h() - 1; });
+    setAfterResize([this](Widget *)
+    {
+        layout.setLineWidth(this->w());
+    });
 }

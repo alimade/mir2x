@@ -103,26 +103,14 @@ class XMLTypeset // means XMLParagraph typeset
         {
             clear();
             m_paragraph->loadXML(xmlString);
-
-            if(m_paragraph->leafCount() > 0){
-                buildTypeset(0, 0);
-            }
-            else{
-                m_ph = getDefaultFontHeight();
-            }
+            updateGfx();
         }
 
         void loadXMLNode(const tinyxml2::XMLNode *node)
         {
             clear();
             m_paragraph->loadXMLNode(node);
-
-            if(m_paragraph->leafCount() > 0){
-                buildTypeset(0, 0);
-            }
-            else{
-                m_ph = getDefaultFontHeight();
-            }
+            updateGfx();
         }
 
     public:
@@ -136,9 +124,14 @@ class XMLTypeset // means XMLParagraph typeset
             m_paragraph->clear();
         }
 
-        void build() // build without reload xml
+        void updateGfx() // build without reload xml
         {
-            buildTypeset(0, 0);
+            if(m_paragraph->leafCount() > 0){
+                buildTypeset(0, 0);
+            }
+            else{
+                m_ph = getDefaultFontHeight();
+            }
         }
 
     private:
@@ -215,12 +208,12 @@ class XMLTypeset // means XMLParagraph typeset
         }
 
     public:
-        std::tuple<int, int> leafTokenLoc(int leaf) const
+        std::tuple<int, int> leafTokenLoc(int leafIndex) const
         {
-            if(leafValid(leaf)){
-                return m_leaf2TokenLoc.at(leaf);
+            if(leafValid(leafIndex)){
+                return m_leaf2TokenLoc.at(leafIndex);
             }
-            throw fflerror("invalid leaf: %d", leaf);
+            throw fflerror("invalid leaf: %d", leafIndex);
         }
 
     public:
@@ -243,6 +236,10 @@ class XMLTypeset // means XMLParagraph typeset
         }
 
     public:
+        int cursorLoc2Off(int, int) const; // actually returns how many tokens in front of cursor
+        std::tuple<int, int> cursorOff2Loc(int) const;
+
+    public:
         void update(double);
 
     public:
@@ -263,24 +260,24 @@ class XMLTypeset // means XMLParagraph typeset
             return m_paragraph->leafCount();
         }
 
-        bool leafValid(int leaf) const
+        bool leafValid(int leafIndex) const
         {
-            return leaf < leafCount();
+            return leafIndex < leafCount();
         }
 
     public:
         void clearEvent(int currLeaf = -1)
         {
-            for(int leaf = 0; leaf < m_paragraph->leafCount(); ++leaf){
-                if(leaf != currLeaf){
-                    m_paragraph->leafRef(leaf).markEvent(BEVENT_OFF);
+            for(int leafIndex = 0; leafIndex < m_paragraph->leafCount(); ++leafIndex){
+                if(leafIndex != currLeaf){
+                    m_paragraph->leaf(leafIndex).markEvent(BEVENT_OFF);
                 }
             }
         }
 
-        int markLeafEvent(int leaf, int event)
+        int markLeafEvent(int leafIndex, int event)
         {
-            return m_paragraph->leafRef(leaf).markEvent(event);
+            return m_paragraph->leaf(leafIndex).markEvent(event);
         }
 
     public:
@@ -327,9 +324,15 @@ class XMLTypeset // means XMLParagraph typeset
         std::string getText(bool) const;
 
     public:
+        const tinyxml2::XMLNode *getXMLNode() const
+        {
+            return m_paragraph->getXMLNode();
+        }
+
+    public:
         const auto leafEvent(int leafID) const
         {
-            return m_paragraph->leafRef(leafID).hasEvent();
+            return m_paragraph->leaf(leafID).hasEvent();
         }
 
     private:
@@ -342,11 +345,11 @@ class XMLTypeset // means XMLParagraph typeset
         bool addRawTokenLine(int, const std::vector<TOKEN> &);
 
     private:
-        void SetTokenBoxWordSpace(int);
+        void setTokenBoxWordSpace(int);
 
     private:
-        void SetLineTokenStartX(int);
-        void SetLineTokenStartY(int);
+        void setLineTokenStartX(int);
+        void setLineTokenStartY(int);
 
     private:
         int LineRawWidth(int, bool) const;
@@ -355,55 +358,40 @@ class XMLTypeset // means XMLParagraph typeset
         int LineFullWidth(int) const;
 
     public:
-        const TOKEN *getToken(int argX, int argY) const
+        auto getToken(this auto && self, int argX, int argY)
         {
-            if(!tokenLocValid(argX, argY)){
+            if(!self.tokenLocValid(argX, argY)){
                 throw fflerror("invalid token location: (%d, %d)", argX, argY);
             }
-            return &(m_lineList[argY].content[argX]);
-        }
-
-        TOKEN *getToken(int argX, int argY)
-        {
-            return const_cast<TOKEN *>(static_cast<const XMLTypeset *>(this)->getToken(argX, argY));
+            return std::addressof(self.m_lineList[argY].content[argX]);
         }
 
     public:
-        const TOKEN *GetLineBackToken(int argLine) const
+        auto GetLineBackToken(this auto && self, int argLine)
         {
-            if(!lineValid(argLine)){
+            if(!self.lineValid(argLine)){
                 throw fflerror("invalid line: %d", argLine);
             }
 
-            if(lineTokenCount(argLine) == 0){
+            if(self.lineTokenCount(argLine) == 0){
                 throw fflerror("invalie empty line: %d", argLine);
             }
 
-            return getToken(lineTokenCount(argLine) - 1, argLine);
-        }
-
-        TOKEN *GetLineBackToken(int argLine)
-        {
-            return const_cast<TOKEN *>(static_cast<const XMLTypeset *>(this)->GetLineBackToken(argLine));
+            return self.getToken(self.lineTokenCount(argLine) - 1, argLine);
         }
 
     public:
-        const TOKEN *GetBackToken() const
+        auto GetBackToken(this auto && self)
         {
-            if(lineCount() == 0){
+            if(self.lineCount() == 0){
                 throw fflerror("empty board");
             }
 
-            if(lineTokenCount(lineCount() - 1) == 0){
-                throw fflerror("invalie empty line: %d", lineCount() - 1);
+            if(self.lineTokenCount(self.lineCount() - 1) == 0){
+                throw fflerror("invalie empty line: %d", self.lineCount() - 1);
             }
 
-            return GetLineBackToken(lineCount() - 1);
-        }
-
-        TOKEN *GetBackToken()
-        {
-            return const_cast<TOKEN *>(static_cast<const XMLTypeset *>(this)->GetBackToken());
+            return self.GetLineBackToken(self.lineCount() - 1);
         }
 
     private:
