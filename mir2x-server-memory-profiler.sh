@@ -38,4 +38,7 @@ cd ${BIN_DIR};
 env HEAPPROFILE=${LOG_DIR}/server.heap.log LD_PRELOAD="${PROF_LIB_PATH}" ./${BIN_NAME} "$@"
 
 cd ${LOG_DIR};
-google-pprof --svg ${BIN_DIR}/server ${LOG_DIR}/server.cpu.log > ${LOG_DIR}/server.cpu.svg
+for file in server.heap.log.*
+do
+    google-pprof --svg ${BIN_DIR}/server ${file} > ${file}.svg
+done
