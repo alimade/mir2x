@@ -26,7 +26,7 @@ mir2x is an experimental project that verifies actor-model based parallelism for
   - mapeditor
 
 ### Notes
-- This repo uses C++20 coroutine, developer needs a compiler supports c++20 to build.
+- This repo fully uses C++20 coroutine to implement actor model, developer needs a compiler supports c++20 to build.
 - This repo uses classic v1.45 mir2 as a reference implementation, you can try the original game:
   - Install [win-xp](https://github.com/etorth/winxp-zh) to host and run the game server/client, tested on real machine or virtualbox machine.
   - Install server/client from [mir2-v1.45](https://github.com/etorth/CBWCQ3).
