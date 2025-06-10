@@ -77,16 +77,23 @@ ServerObject::LuaThreadRunner::LuaThreadRunner(ServerObject *serverObject)
         }
     });
 
-    bindCoop("_RSVD_NAME_loadMap", [thisptr = this](this auto, LuaCoopResumer onDone, std::string mapName) -> corof::awaitable<>
+    bindCoop("_RSVD_NAME_loadMap", [thisptr = this](this auto, LuaCoopResumer onDone, sol::object mapName) -> corof::awaitable<>
     {
-        fflassert(str_haschar(mapName));
+        const auto mapID = [&mapName]() -> uint32_t
+        {
+            if(mapName.is<std::string>()) return DBCOM_MAPID(to_u8cstr(mapName.as<std::string>()));
+            if(mapName.is<lua_Integer>()) return static_cast<uint32_t>(mapName.as<lua_Integer>());
+            throw fflerror("invalid sol::object type");
+        }();
+
+        fflassert(mapID);
 
         bool closed = false;
         onDone.pushOnClose([&closed](){ closed = true; });
 
         AMLoadMap amLM;
         std::memset(&amLM, 0, sizeof(AMLoadMap));
-        amLM.mapUID = uidsf::getMapBaseUID(DBCOM_MAPID(to_u8cstr(mapName)));
+        amLM.mapUID = uidsf::getMapBaseUID(mapID);
 
         const auto mpk = co_await thisptr->m_actorPod->send(uidf::getServiceCoreUID(), {AM_LOADMAP, amLM});
         if(closed){

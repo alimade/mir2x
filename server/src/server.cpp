@@ -643,11 +643,10 @@ bool Server::addMonster(uint32_t monsterID, uint32_t mapID, int x, int y, bool s
     return false;
 }
 
-bool Server::loadMap(const std::string &mapName)
+bool Server::loadBaseMap(uint32_t mapID)
 {
-    const auto mapID = DBCOM_MAPID(to_u8cstr(mapName));
-    if(mapID == 0){
-        addLog(LOGTYPE_WARNING, "Invalid map name: %s", to_cstr(mapName));
+    if(!DBCOM_MAPRECORD(mapID)){
+        addLog(LOGTYPE_WARNING, "Invalid map id: %llu", to_llu(mapID));
         return false;
     }
 
@@ -658,12 +657,12 @@ bool Server::loadMap(const std::string &mapName)
     switch(const auto rmpk = SyncDriver().forward(uidf::getServiceCoreUID(), {AM_LOADMAP, amLM}); rmpk.type()){
         case AM_LOADMAPOK:
             {
-                addLog(LOGTYPE_INFO, "Load map %s: uid = %s", to_cstr(mapName), uidf::getUIDString(amLM.mapUID).c_str());
+                addLog(LOGTYPE_INFO, "Load map done: %s", uidf::getUIDString(amLM.mapUID).c_str());
                 return true;
             }
         default:
             {
-                addLog(LOGTYPE_WARNING, "Load map %s failed", to_cstr(mapName));
+                addLog(LOGTYPE_WARNING, "Load map failed: %llu", to_llu(mapID));
                 return false;
             }
     }
@@ -1042,9 +1041,17 @@ void Server::regLuaExport(CommandLuaModule *modulePtr, uint32_t nCWID)
         return sol::make_object(sol::state_view(stThisLua), getMapList());
     });
 
-    modulePtr->bindFunction("loadMap", [this](std::string mapName)
+    modulePtr->bindFunction("loadMap", [this](sol::object mapName)
     {
-        return loadMap(mapName);
+        const auto mapID = [&mapName]() -> uint32_t
+        {
+            if(mapName.is<std::string>()) return DBCOM_MAPID(to_u8cstr(mapName.as<std::string>()));
+            if(mapName.is<lua_Integer>()) return static_cast<uint32_t>(mapName.as<lua_Integer>());
+            throw fflerror("invalid sol::object type");
+        }();
+
+        fflassert(mapID);
+        return loadBaseMap(mapID);
     });
 
     modulePtr->bindFunction("getCWID", [nCWID]() -> int

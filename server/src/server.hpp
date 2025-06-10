@@ -94,7 +94,7 @@ class Server final
         void addLog(const Log::LogTypeLoc &, const char *, ...);
 
     public:
-        bool loadMap(const std::string &);
+        bool loadBaseMap(uint32_t);
         std::vector<int> getMapList();
         sol::optional<size_t> getMonsterCount(uint32_t, uint64_t);
 
