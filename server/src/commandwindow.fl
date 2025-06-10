@@ -24,7 +24,7 @@ class CommandWindow {} {
   }
   Function {CommandWindow()} {} {
     Fl_Window m_window {
-      label LauCommand
+      label LuaCommand
       callback {// when get esc
 // 1. hide current window
 // 2. activate its menuitem in main window
