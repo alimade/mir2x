@@ -181,7 +181,6 @@ corof::awaitable<std::pair<bool, bool>> ServiceCore::requestLoadMap(uint64_t map
 
     for(auto &h: m_loadMapPendingOps.at(mapUID)){
         h.resume();
-        h.destroy();
     }
 
     m_loadMapPendingOps.erase(mapUID); // won't keep record of bad load
