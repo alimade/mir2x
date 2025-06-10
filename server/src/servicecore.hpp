@@ -22,7 +22,7 @@ class ServiceCore final: public PeerCore
             ServiceCore * const core;
             uint64_t      const mapUID;
 
-            bool await_ready() const
+            constexpr bool await_ready() const
             {
                 return false;
             }
