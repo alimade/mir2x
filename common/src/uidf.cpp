@@ -106,6 +106,7 @@ const char *uidf::getUIDTypeCStr(uint64_t uid)
         case UID_PLY: return "PLY";
         case UID_RCV: return "RCV";
         case UID_QST: return "QST";
+        case UID_SLO: return "SLO";
         default     : return "ERR";
     }
 }
