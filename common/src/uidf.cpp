@@ -64,15 +64,15 @@ std::string uidf::getUIDString(uint64_t uid)
             }
         case UID_MON:
             {
-                return str_printf("MON_%llu_%llu_%llu", to_llu(uidf::getMonsterID(uid)), to_llu(uidf::peerIndex(uid)), to_llu(uidf::getMonsterSeq(uid)));
+                return str_printf("MON_%llu_%llu_%llu", to_llu(uidf::getMonsterID(uid)), to_llu(uidf::peerIndex(uid)), to_llu(uidf::getMonsterSeq(uid, false)));
             }
         case UID_NPC:
             {
-                return str_printf("NPC_%llu_%llu_%llu", to_llu(uidf::getNPCID(uid)), to_llu(uidf::peerIndex(uid)), to_llu(uidf::getNPCSeq(uid)));
+                return str_printf("NPC_%llu_%llu_%llu", to_llu(uidf::getNPCID(uid)), to_llu(uidf::peerIndex(uid)), to_llu(uidf::getNPCSeq(uid, false)));
             }
         case UID_MAP:
             {
-                return str_printf("MAP_%llu_%llu_%llu", to_llu(uidf::getMapID(uid)), to_llu(uidf::peerIndex(uid)), to_llu(uidf::getMapSeq(uid)));
+                return str_printf("MAP_%llu_%llu_%llu", to_llu(uidf::getMapID(uid)), to_llu(uidf::peerIndex(uid)), to_llu(uidf::getMapSeq(uid, false)));
             }
         case UID_COR:
             {
@@ -204,10 +204,10 @@ _def_get_UID_id_helper(uidf::getMonsterID, UID_MON)
 #undef _def_get_UID_id_helper
 
 #define _def_get_UID_seq_helper(funcName, uidType) \
-uint64_t funcName(uint64_t uid) \
+uint64_t funcName(uint64_t uid, bool andPeerIndex) \
 { \
-    fflassert(uidf::getUIDType(uid) == uidType, uid, uidf::getUIDString(uid), uidf::getUIDTypeCStr(uidType)); \
-    return uid & (peerIndexBitMask | seqBitMask); \
+    fflassert(uidf::getUIDType(uid) == uidType, uid, andPeerIndex, uidf::getUIDString(uid), uidf::getUIDTypeCStr(uidType)); \
+    return uid & ((andPeerIndex ? peerIndexBitMask : UINT64_C(0)) | seqBitMask); \
 } \
 
 _def_get_UID_seq_helper(uidf::getMapSeq    , UID_MAP)
@@ -232,7 +232,7 @@ bool uidf::isMap(uint64_t uid)
 
 bool uidf::isBaseMap(uint64_t uid)
 {
-    return uidf::isMap(uid) && (uidf::getMapSeq(uid) == 1);
+    return uidf::isMap(uid) && (uidf::getMapSeq(uid, false) == 1);
 }
 
 bool uidf::isPlayer(uint64_t uid)

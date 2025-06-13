@@ -79,9 +79,9 @@ namespace uidf
     uint32_t getQuestID(uint64_t);
     uint32_t getMonsterID(uint64_t);
 
-    uint64_t getMapSeq(uint64_t);
-    uint64_t getNPCSeq(uint64_t);
-    uint64_t getMonsterSeq(uint64_t);
+    uint64_t getMapSeq(uint64_t, bool);
+    uint64_t getNPCSeq(uint64_t, bool);
+    uint64_t getMonsterSeq(uint64_t, bool);
 
     uint64_t getPeerCoreSeq(uint64_t);
     uint64_t getReceiverSeq(uint64_t);
