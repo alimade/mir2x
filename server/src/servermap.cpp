@@ -1247,7 +1247,7 @@ corof::awaitable<> ServerMap::loadNPChar()
                         {
                             const auto amUID = mpk.conv<AMUID>();
                             m_npcList.emplace(sdINPC.npcName, amUID.uid);
-                            co_return;
+                            break;
                         }
                     default:
                         {
