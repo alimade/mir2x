@@ -24,7 +24,7 @@ class ActorPod final
             ActorPod * const actor;
             uint64_t   const seqID;
 
-            bool await_ready() const noexcept
+            constexpr bool await_ready() const noexcept
             {
                 return false;
             }

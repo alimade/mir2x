@@ -9,5 +9,9 @@ function loadMap(mapName)
     return mapUID
 end
 
+function waitActivated()
+    _RSVD_NAME_callFuncCoop('waitActivated')
+end
+
 --
 -- )###"

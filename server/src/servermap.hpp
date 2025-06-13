@@ -101,12 +101,6 @@ class ServerMap final: public ServerObject
             }
         };
 
-        struct NPCharOp
-        {
-            std::optional<uint64_t> uid;
-            std::vector<std::function<void(uint64_t)>> ops;
-        };
-
     private:
         std::unique_ptr<EnableAddCO> m_addCO;
 
@@ -114,7 +108,7 @@ class ServerMap final: public ServerObject
         std::shared_ptr<Mir2xMapData> m_mapBin;
 
     private:
-        std::unordered_map<std::string, NPCharOp> m_npcList;
+        std::unordered_map<std::string, uint64_t> m_npcList;
 
     private:
         std::vector<MapGrid> m_gridList;

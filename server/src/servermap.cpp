@@ -215,45 +215,12 @@ ServerMap::LuaThreadRunner::LuaThreadRunner(ServerMap *serverMapPtr)
         }
     });
 
-    bindCoop("_RSVD_NAME_getNPCharUID", [thisptr = this](this auto, LuaCoopResumer onDone, std::string npcName) -> corof::awaitable<>
+    bindFunction("getNPCharUID", [this](std::string npcName, sol::this_state s) -> sol::object
     {
-        auto mapPtr = thisptr->getServerMap();
-        auto p = mapPtr->m_npcList.find(npcName);
-
-        if(p == mapPtr->m_npcList.end()){
-            onDone();
-            return {};
+        if(auto p = getServerMap()->m_npcList.find(npcName); (p != getServerMap()->m_npcList.end()) && p->second){
+            return luaf::buildLuaObj(sol::state_view(s), static_cast<lua_Integer>(p->second));
         }
-
-        if(p->second.uid.has_value()){
-            if(p->second.uid.value()){
-                onDone(p->second.uid.value());
-            }
-            else{
-                onDone(); // load tried but failed
-            }
-            return {};
-        }
-
-        auto closed = std::make_shared<bool>(false);
-        onDone.pushOnClose([closed](){ *closed = true; });
-
-        p->second.ops.push_back([closed, onDone](uint64_t uid)
-        {
-            if(*closed){
-                return;
-            }
-
-            onDone.popOnClose();
-            if(uid){
-                onDone(uid);
-            }
-            else{
-                onDone();
-            }
-        });
-
-        return {};
+        return sol::nil;
     });
 
     bindFunction("getMonsterCount", [this](sol::variadic_args args) -> int
@@ -1275,31 +1242,16 @@ corof::awaitable<> ServerMap::loadNPChar()
             // because npc needs access to database
 
             if(uidf::peerIndex(UID())){
-                m_npcList.emplace(sdINPC.npcName, NPCharOp{});
                 switch(const auto mpk = co_await m_actorPod->send(uidf::getServiceCoreUID(), {AM_ADDCO, cerealf::serialize<SDInitCharObject>(sdINPC)}); mpk.type()){
                     case AM_UID:
                         {
-                            auto amUID = mpk.conv<AMUID>();
-                            auto &npc = m_npcList[sdINPC.npcName];
-
-                            npc.uid = amUID.uid;
-                            for(auto &op: npc.ops){
-                                if(op){
-                                    op(amUID.uid);
-                                }
-                            }
+                            const auto amUID = mpk.conv<AMUID>();
+                            m_npcList.emplace(sdINPC.npcName, amUID.uid);
                             co_return;
                         }
                     default:
                         {
-                            auto &npc = m_npcList[sdINPC.npcName];
-                            npc.uid = 0;
-                            for(auto &op: npc.ops){
-                                if(op){
-                                    op(0);
-                                }
-                            }
-                            co_return;
+                            throw fflerror("failed to load NPC: %s", to_cstr(sdINPC.npcName));
                         }
                 }
             }
@@ -1308,7 +1260,7 @@ corof::awaitable<> ServerMap::loadNPChar()
                 // spawn NPC locally
 
                 if(const auto npcPtr = m_addCO->addCO(sdINPC)){
-                    m_npcList[sdINPC.npcName].uid = npcPtr->UID();
+                    m_npcList.emplace(sdINPC.npcName, npcPtr->UID());
                 }
             }
         }

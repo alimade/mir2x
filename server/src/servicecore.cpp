@@ -116,14 +116,30 @@ corof::awaitable<> ServiceCore::onActivate()
     co_await ServerObject::onActivate();
     m_addCO = std::make_unique<EnableAddCO>(m_actorPod);
 
+    std::set<uint64_t> loadedMapList;
     for(uint32_t mapID = 1; mapID < DBCOM_MAPENDID(); ++mapID){
         if(g_serverArgParser->masterConfig().preloadMapCheck(mapID)){
-            if(const auto [loaded, _] = co_await requestLoadMap(uidsf::getMapBaseUID(mapID)); loaded){
+            const uint64_t mapUID = uidsf::getMapBaseUID(mapID);
+            if(const auto [loaded, _] = co_await requestLoadMap(mapUID); loaded){
+                loadedMapList.insert(mapUID);
                 g_server->addLog(LOGTYPE_INFO, "Preload %s successfully", to_cstr(DBCOM_MAPRECORD(mapID).name));
             }
             else{
                 throw fflerror("failed to load map %s", to_cstr(DBCOM_MAPRECORD(mapID).name));
             }
+        }
+    }
+
+    for(const auto mapUID: loadedMapList){
+        switch(const auto mpk = co_await m_actorPod->send(mapUID, AM_WAITACTIVATED); mpk.type()){
+            case AM_OK:
+                {
+                    break;
+                }
+            default:
+                {
+                    throw fflerror("activation failed: %s", to_cstr(uidf::getUIDString(mapUID)));
+                }
         }
     }
 

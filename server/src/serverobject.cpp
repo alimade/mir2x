@@ -115,6 +115,21 @@ ServerObject::LuaThreadRunner::LuaThreadRunner(ServerObject *serverObject)
         }
     });
 
+    bindCoop("_RSVD_NAME_waitActivated", [thisptr = this](this auto, LuaCoopResumer onDone) -> corof::awaitable<>
+    {
+        bool closed = false;
+        onDone.pushOnClose([&closed](){ closed = true; });
+
+        co_await thisptr->getSO()->waitActivated();
+
+        if(closed){
+            co_return;
+        }
+
+        onDone.popOnClose();
+        onDone();
+    });
+
     pfrCheck(execRawString(BEGIN_LUAINC(char)
 #include "serverobject.lua"
     END_LUAINC()));
@@ -124,7 +139,7 @@ ServerObject::ServerObject(uint64_t uid)
     : m_UID(uid)
 {
     if(g_serverArgParser->sharedConfig().traceActorMessageCount){
-        m_stateTrigger.install([this, lastCheckTick = to_u32(0)]() mutable -> bool
+        defer([this, lastCheckTick = to_u32(0)]() mutable -> bool
         {
             if(const auto currTick = g_server->getCurrTick(); lastCheckTick + 1000 < currTick){
                 if(hasActorPod()){

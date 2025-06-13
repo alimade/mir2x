@@ -24,16 +24,40 @@ class ServerObject
         };
 
     private:
+        struct RegisterWaitActivated
+        {
+            ServerObject * const so;
+
+            bool await_ready() const noexcept
+            {
+                return so->m_activated;
+            }
+
+            void await_suspend(std::coroutine_handle<> handle)
+            {
+                so->m_waitActivatedOps.push_back(handle);
+            }
+
+            void await_resume() const noexcept {}
+        };
+
+    private:
+        std::vector<std::coroutine_handle<>> m_waitActivatedOps;
+
+    private:
         friend class ActorPod;
         friend class ServerObjectLuaThreadRunner;
 
     private:
         const uint64_t m_UID;
 
+    private:
+        bool m_activated = false;
+
     protected:
         ActorPod *m_actorPod = nullptr;
 
-    protected:
+    private:
         StateTrigger m_stateTrigger;
 
     public:
@@ -64,6 +88,15 @@ class ServerObject
 
     protected:
         void deactivate();
+
+    protected:
+        corof::awaitable<> waitActivated()
+        {
+            co_await RegisterWaitActivated
+            {
+                .so = this,
+            };
+        }
 
     public:
         bool hasActorPod() const
@@ -102,13 +135,19 @@ class ServerObject
         }
 
     public:
-        template<typename Func> void defer(Func && func) // func() -> void
+        // func() -> coro: execute once
+        //           void: execute once
+        //           bool: execute once/loop
+        template<typename Func> void defer(Func && func)
         {
-            m_stateTrigger.install([func = std::forward<Func>(func)]() -> bool
+            m_stateTrigger.install([func = std::forward<Func>(func)]() mutable -> bool
             {
                 using ReturnType = decltype(func());
 
-                if constexpr (std::is_void_v<ReturnType>){
+                if constexpr (std::is_same_v<ReturnType, bool>){
+                    return func();
+                }
+                else if constexpr (std::is_void_v<ReturnType>){
                     func();
                 }
                 else if constexpr (std::is_same_v<ReturnType, corof::awaitable<>>){

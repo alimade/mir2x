@@ -28,9 +28,25 @@ ActorPod::ActorPod(uint64_t uid, ServerObject *serverObject)
       }())
     , m_SO(serverObject)
 {
-    registerOp(AM_ACTIVATE, [thisptr = this]([[maybe_unused]] this auto self, const ActorMsgPack &) -> corof::awaitable<>
+    registerOp(AM_ACTIVATE, [thisptr = this](this auto, const ActorMsgPack &) -> corof::awaitable<>
     {
-        return thisptr->m_SO->onActivate();
+        if(thisptr->m_SO->m_activated){
+            throw fflerror("ServerObject has been activated twice: %s", to_cstr(uidf::getUIDString(thisptr->UID())));
+        }
+
+        co_await thisptr->m_SO->onActivate();
+        thisptr->m_SO->m_activated = true;
+
+        for(auto &handle: thisptr->m_SO->m_waitActivatedOps){
+            handle.resume();
+        }
+        thisptr->m_SO->m_waitActivatedOps.clear();
+    });
+
+    registerOp(AM_WAITACTIVATED, [thisptr = this](this auto, const ActorMsgPack &mpk) -> corof::awaitable<>
+    {
+        co_await thisptr->m_SO->waitActivated();
+        thisptr->post(mpk.fromAddr(), AM_OK);
     });
 }
 
