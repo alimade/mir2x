@@ -141,7 +141,7 @@ corof::awaitable<> ServiceCore::net_CM_ONLINE(uint32_t channID, uint8_t, const u
         .hairColor = queryChar.getColumn("fld_haircolor"),
     };
 
-    if(const auto [loaded, _] = co_await requestLoadMap(mapUID); loaded){
+    if(const auto [loaded, _] = co_await requestLoadMap(mapUID, false); loaded){
         if(m_addCO->addCO(sdICO)){
             m_dbidList[channID].second = true;
         }

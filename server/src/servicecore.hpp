@@ -60,7 +60,7 @@ class ServiceCore final: public PeerCore
         corof::awaitable<> operateNet(uint32_t, uint8_t, const uint8_t *, size_t, uint64_t);
 
     protected:
-        corof::awaitable<std::pair<bool, bool>> requestLoadMap(uint64_t);
+        corof::awaitable<std::pair<bool, bool>> requestLoadMap(uint64_t, bool);
 
     public:
         corof::awaitable<> onActivate() override;

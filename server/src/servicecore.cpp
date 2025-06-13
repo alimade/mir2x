@@ -120,7 +120,7 @@ corof::awaitable<> ServiceCore::onActivate()
     for(uint32_t mapID = 1; mapID < DBCOM_MAPENDID(); ++mapID){
         if(g_serverArgParser->masterConfig().preloadMapCheck(mapID)){
             const uint64_t mapUID = uidsf::getMapBaseUID(mapID);
-            if(const auto [loaded, _] = co_await requestLoadMap(mapUID); loaded){
+            if(const auto [loaded, _] = co_await requestLoadMap(mapUID, false); loaded){
                 loadedMapList.insert(mapUID);
                 g_server->addLog(LOGTYPE_INFO, "Preload %s successfully", to_cstr(DBCOM_MAPRECORD(mapID).name));
             }
@@ -168,23 +168,53 @@ corof::awaitable<> ServiceCore::onActivate()
     }
 }
 
-corof::awaitable<std::pair<bool, bool>> ServiceCore::requestLoadMap(uint64_t mapUID)
+corof::awaitable<std::pair<bool, bool>> ServiceCore::requestLoadMap(uint64_t mapUID, bool waitActivated)
 {
+    std::pair<bool, bool> result
+    {
+        false,  //  loaded
+        false,  // newLoad
+    };
+
+#define result_WAIT_MAP_ACTIVATED() \
+    if(result.first && waitActivated){ \
+        if(const auto mpk = co_await m_actorPod->send(mapUID, AM_WAITACTIVATED); mpk.type() != AM_OK){ \
+            result.first = false; \
+        } \
+    } \
+
+    if(m_mapList.contains(mapUID)){
+        result.first  = true;
+        result.second = false;
+
+        result_WAIT_MAP_ACTIVATED();
+        co_return result;
+    }
+
     if(uidsf::isLocalUID(mapUID)){
-        co_return loadMap(mapUID);
+        result = loadMap(mapUID);
+        result_WAIT_MAP_ACTIVATED();
+        co_return result;
     }
 
     if(auto p = m_loadMapPendingOps.find(mapUID); p != m_loadMapPendingOps.end()){
-        co_return co_await RegisterLoadMapOpAwaiter
+        result = co_await RegisterLoadMapOpAwaiter
         {
             .core = this,
             .mapUID = mapUID,
         };
+
+        result_WAIT_MAP_ACTIVATED();
+        co_return result;
     }
+
+#undef result_WAIT_MAP_ACTIVATED
 
     AMPeerLoadMap amPLM;
     std::memset(&amPLM, 0, sizeof(amPLM));
+
     amPLM.mapUID = mapUID;
+    amPLM.waitActivated = waitActivated;
 
     m_loadMapPendingOps.try_emplace(mapUID);
 
@@ -200,7 +230,11 @@ corof::awaitable<std::pair<bool, bool>> ServiceCore::requestLoadMap(uint64_t map
     }
 
     m_loadMapPendingOps.erase(mapUID); // won't keep record of bad load
-    co_return {loaded, true};          // second parameter is ignored if load failed
+
+    result.first  = loaded;
+    result.second = loaded ? true : false;
+
+    co_return result;
 }
 
 std::optional<std::pair<uint32_t, bool>> ServiceCore::findDBID(uint32_t channID) const

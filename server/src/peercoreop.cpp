@@ -1,3 +1,4 @@
+#include "sgf.hpp"
 #include "uidf.hpp"
 #include "uidsf.hpp"
 #include "serverguard.hpp"
@@ -24,25 +25,36 @@ corof::awaitable<> PeerCore::on_AM_PEERLOADMAP(const ActorMsgPack &mpk)
     // map may run on peer
     // but is manageed on service core
 
+    auto loadMapSg = sgf::guard([fromAddr = mpk.fromAddr(), this]()
+    {
+        m_actorPod->post(fromAddr, AM_ERROR);
+    });
+
     const auto amPLM = mpk.conv<AMPeerLoadMap>();
 
     if(!uidsf::isLocalUID(amPLM.mapUID)){
-        m_actorPod->post(mpk.fromAddr(), AM_ERROR);
-        return {};
+        co_return;
     }
 
-    if(auto [loaded, newLoad] = loadMap(amPLM.mapUID); loaded){
-        AMPeerLoadMapOK amPLMOK;
-        std::memset(&amPLMOK, 0, sizeof(amPLMOK));
+    const auto [loaded, newLoad] = loadMap(amPLM.mapUID);
+    if(!loaded){
+        co_return;
+    }
 
-        amPLMOK.newLoad = newLoad;
-        m_actorPod->post(mpk.fromAddr(), {AM_PEERLOADMAPOK, amPLMOK});
-        if(newLoad){
-            g_server->addLog(LOGTYPE_INFO, "Load map %d on peer %zu successfully", to_d(uidf::getMapID(amPLM.mapUID)), uidf::peerIndex(UID()));
+    if(amPLM.waitActivated){
+        if(const auto loadMpk = co_await m_actorPod->send(amPLM.mapUID, AM_WAITACTIVATED); loadMpk.type() != AM_OK){
+            co_return;
         }
     }
-    else{
-        m_actorPod->post(mpk.fromAddr(), AM_ERROR);
+
+    AMPeerLoadMapOK amPLMOK;
+    std::memset(&amPLMOK, 0, sizeof(amPLMOK));
+
+    amPLMOK.newLoad = newLoad;
+    m_actorPod->post(mpk.fromAddr(), {AM_PEERLOADMAPOK, amPLMOK});
+    loadMapSg.dismiss();
+
+    if(newLoad){
+        g_server->addLog(LOGTYPE_INFO, "Load map %d on peer %zu successfully", to_d(uidf::getMapID(amPLM.mapUID)), uidf::peerIndex(UID()));
     }
-    return {};
 }

@@ -54,7 +54,7 @@ corof::awaitable<> ServiceCore::on_AM_QUERYMAPLIST(const ActorMsgPack &rstMPK)
 corof::awaitable<> ServiceCore::on_AM_LOADMAP(const ActorMsgPack &mpk)
 {
     const auto amLM = mpk.conv<AMLoadMap>();
-    if(const auto [loaded, newLoad] = co_await requestLoadMap(amLM.mapUID); loaded){
+    if(const auto [loaded, newLoad] = co_await requestLoadMap(amLM.mapUID, amLM.waitActivated); loaded){
         AMLoadMapOK amLMOK;
         std::memset(&amLMOK, 0, sizeof(amLMOK));
 

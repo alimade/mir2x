@@ -91,7 +91,7 @@ EnableAddCO::EnableAddCO(ActorPod *argPod)
             fnAddCO();
         }
         else if(thisptr->m_actorPod->UID() == uidf::getServiceCoreUID()){
-            if(const auto loadRes = co_await dynamic_cast<ServiceCore *>(thisptr->m_actorPod->getSO())->requestLoadMap(mapUID); loadRes.first){
+            if(const auto loadRes = co_await dynamic_cast<ServiceCore *>(thisptr->m_actorPod->getSO())->requestLoadMap(mapUID, false); loadRes.first){
                 fnAddCO();
             }
             else{
@@ -101,7 +101,9 @@ EnableAddCO::EnableAddCO(ActorPod *argPod)
         else{
             AMLoadMap amLM;
             std::memset(&amLM, 0, sizeof(amLM));
+
             amLM.mapUID = mapUID;
+            amLM.waitActivated = false;
 
             switch(const auto rmpk = co_await thisptr->m_actorPod->send(uidf::getServiceCoreUID(), {AM_LOADMAP, amLM}); rmpk.type()){
                 case AM_LOADMAPOK:

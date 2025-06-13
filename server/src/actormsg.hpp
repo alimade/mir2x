@@ -482,6 +482,7 @@ struct AMMapSwitchOK
 struct AMPeerLoadMap
 {
     uint64_t mapUID;
+    uint8_t  waitActivated;
 };
 
 struct AMPeerLoadMapOK
@@ -492,6 +493,7 @@ struct AMPeerLoadMapOK
 struct AMLoadMap
 {
     uint64_t mapUID;
+    uint8_t  waitActivated;
 };
 
 struct AMLoadMapOK
