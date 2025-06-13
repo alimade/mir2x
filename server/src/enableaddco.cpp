@@ -91,7 +91,10 @@ EnableAddCO::EnableAddCO(ActorPod *argPod)
             fnAddCO();
         }
         else if(thisptr->m_actorPod->UID() == uidf::getServiceCoreUID()){
-            if(const auto loadRes = co_await dynamic_cast<ServiceCore *>(thisptr->m_actorPod->getSO())->requestLoadMap(mapUID, false); loadRes.first){
+            if(mpk.from() == mapUID){
+                fnAddCO();
+            }
+            else if(const auto loadRes = co_await dynamic_cast<ServiceCore *>(thisptr->m_actorPod->getSO())->requestLoadMap(mapUID, false); loadRes.first){
                 fnAddCO();
             }
             else{
