@@ -132,7 +132,7 @@ corof::awaitable<> ServiceCore::onActivate()
 
     for(const auto mapUID: loadedMapList){
         switch(const auto mpk = co_await m_actorPod->send(mapUID, AM_WAITACTIVATED); mpk.type()){
-            case AM_OK:
+            case AM_WAITACTIVATEDOK:
                 {
                     break;
                 }
@@ -178,7 +178,7 @@ corof::awaitable<std::pair<bool, bool>> ServiceCore::requestLoadMap(uint64_t map
 
 #define result_WAIT_MAP_ACTIVATED() \
     if(result.first && waitActivated){ \
-        if(const auto mpk = co_await m_actorPod->send(mapUID, AM_WAITACTIVATED); mpk.type() != AM_OK){ \
+        if(const auto mpk = co_await m_actorPod->send(mapUID, AM_WAITACTIVATED); mpk.type() != AM_WAITACTIVATEDOK){ \
             result.first = false; \
         } \
     } \

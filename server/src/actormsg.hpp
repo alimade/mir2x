@@ -31,6 +31,7 @@ enum ActorMsgPackType: int
     AM_PING,
     AM_ACTIVATE,
     AM_WAITACTIVATED,
+    AM_WAITACTIVATEDOK,
     AM_TRYJUMP,
     AM_ALLOWJUMP,
     AM_REJECTJUMP,
@@ -160,6 +161,7 @@ inline const char *mpkName(int type)
         _add_mpk_type_case(AM_PING)
         _add_mpk_type_case(AM_ACTIVATE)
         _add_mpk_type_case(AM_WAITACTIVATED)
+        _add_mpk_type_case(AM_WAITACTIVATEDOK)
         _add_mpk_type_case(AM_TRYJUMP)
         _add_mpk_type_case(AM_ALLOWJUMP)
         _add_mpk_type_case(AM_REJECTJUMP)

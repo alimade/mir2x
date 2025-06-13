@@ -46,7 +46,7 @@ ActorPod::ActorPod(uint64_t uid, ServerObject *serverObject)
     registerOp(AM_WAITACTIVATED, [thisptr = this](this auto, const ActorMsgPack &mpk) -> corof::awaitable<>
     {
         co_await thisptr->m_SO->waitActivated();
-        thisptr->post(mpk.fromAddr(), AM_OK);
+        thisptr->post(mpk.fromAddr(), AM_WAITACTIVATEDOK);
     });
 }
 

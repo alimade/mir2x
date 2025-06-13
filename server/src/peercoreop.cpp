@@ -42,7 +42,7 @@ corof::awaitable<> PeerCore::on_AM_PEERLOADMAP(const ActorMsgPack &mpk)
     }
 
     if(amPLM.waitActivated){
-        if(const auto loadMpk = co_await m_actorPod->send(amPLM.mapUID, AM_WAITACTIVATED); loadMpk.type() != AM_OK){
+        if(const auto loadMpk = co_await m_actorPod->send(amPLM.mapUID, AM_WAITACTIVATED); loadMpk.type() != AM_WAITACTIVATEDOK){
             co_return;
         }
     }
