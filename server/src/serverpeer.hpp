@@ -50,7 +50,7 @@ class ServerPeer final: public std::enable_shared_from_this<ServerPeer>
     private:
         void notify()
         {
-            m_timer.cancel();
+            asio::post(m_timer.get_executor(), [this]{ m_timer.cancel(); });
         }
 
     public:
