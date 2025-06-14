@@ -189,6 +189,25 @@ void ServerObject::deactivate()
     }
 }
 
+corof::awaitable<bool> ServerObject::queryDead(uint64_t uid)
+{
+    switch(const auto rmpk = co_await m_actorPod->send(uid, AM_QUERYDEAD); rmpk.type()){
+        case AM_TRUE:
+        case AM_BADACTORPOD:
+            {
+                co_return true;
+            }
+        case AM_FALSE:
+            {
+                co_return false;
+            }
+        default:
+            {
+                throw fflerror("unexpected message: %s", rmpk.str(UID()).c_str());
+            }
+    }
+}
+
 void ServerObject::forwardNetPackage(uint64_t uid, uint8_t type, const void *buf, size_t bufLen)
 {
     fflassert(uid != UID());

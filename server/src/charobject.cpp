@@ -207,18 +207,6 @@ int CharObject::updateInViewCO(const COLocation &coLoc, bool forceDelete)
     return to_d(m_inViewCOList.size()) - oldSize;
 }
 
-void CharObject::notifyDead(uint64_t uid)
-{
-    fflassert(uid);
-    fflassert(m_dead.get());
-
-    AMNotifyDead amND;
-    std::memset(&amND, 0, sizeof(amND));
-
-    amND.UID = UID();
-    m_actorPod->post(uid, {AM_NOTIFYDEAD, amND});
-}
-
 ActionNode CharObject::makeActionStand() const
 {
     ActionNode stand = ActionStand

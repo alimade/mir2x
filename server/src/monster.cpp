@@ -1466,9 +1466,7 @@ corof::awaitable<bool> Monster::validTarget(uint64_t targetUID)
         co_return false;
     }
 
-    const auto healthOpt = co_await queryHealth(targetUID);
-
-    if(!healthOpt.has_value() || healthOpt.value().hp <= 0){
+    if(co_await queryDead(targetUID)){
         co_return false;
     }
 

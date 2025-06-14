@@ -185,6 +185,9 @@ class ServerObject
         }
 
     protected:
+        corof::awaitable<bool> queryDead(uint64_t);
+
+    protected:
         void forwardNetPackage(uint64_t, uint8_t, const void *, size_t);
 
     protected:

@@ -96,6 +96,9 @@ class BattleObject: public CharObject
     protected:
         std::vector<Offender> m_offenderList;
 
+    protected:
+        TimedState<bool> m_dead;
+
     public:
         BattleObject(
                 uint64_t, // uid
@@ -106,6 +109,9 @@ class BattleObject: public CharObject
 
     public:
         ~BattleObject() = default;
+
+    public:
+        corof::awaitable<> onActivate() override;
 
     protected:
         virtual void reportCO(uint64_t) = 0;
@@ -264,4 +270,7 @@ class BattleObject: public CharObject
         {
             return m_sdHealth;
         }
+
+    protected:
+        void notifyDead(uint64_t);
 };

@@ -80,6 +80,12 @@ BattleObject::BattleObject(
     : CharObject(uid, argMapUID, mapX, mapY, direction)
     , m_lastAction(ACTION_NONE)
 {
+    m_actorPod->registerOp(AM_QUERYDEAD, [this](const ActorMsgPack &mpk) -> corof::awaitable<>
+    {
+        m_actorPod->post(mpk.fromAddr(), m_dead.get() ? AM_TRUE : AM_FALSE);
+        return {};
+    });
+
     m_lastActionTime.fill(0);
     defer([ptimer = std::make_shared<hres_timer>(), this]() mutable -> bool
     {
@@ -1101,4 +1107,16 @@ void BattleObject::sendBuff(uint64_t uid, uint64_t fromBuffSeq, uint32_t buffID)
     amAB.fromUID = UID();
     amAB.fromBuffSeq = fromBuffSeq;
     m_actorPod->post(uid, {AM_ADDBUFF, amAB});
+}
+
+void BattleObject::notifyDead(uint64_t uid)
+{
+    fflassert(uid);
+    fflassert(m_dead.get());
+
+    AMNotifyDead amND;
+    std::memset(&amND, 0, sizeof(amND));
+
+    amND.UID = UID();
+    m_actorPod->post(uid, {AM_NOTIFYDEAD, amND});
 }

@@ -41,9 +41,6 @@ class CharObject: public ServerObject
         std::unordered_map<uint64_t, COLocation> m_inViewCOList;
 
     protected:
-        TimedState<bool> m_dead;
-
-    protected:
         int m_X;
         int m_Y;
         int m_direction;
@@ -172,9 +169,6 @@ class CharObject: public ServerObject
         {
             return uidf::isMonster(UID(), monName);
         }
-
-    protected:
-        void notifyDead(uint64_t);
 
     protected:
         virtual ActionNode makeActionStand() const;

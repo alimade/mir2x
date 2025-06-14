@@ -20,6 +20,8 @@ enum ActorMsgPackType: int
     AM_BEGIN = AM_SYS_END,
     AM_OK    = AM_BEGIN,
     AM_ERROR,
+    AM_TRUE,
+    AM_FALSE,
     AM_BADACTORPOD,
     AM_BADCHANNEL,
     AM_SDBUFFER,
@@ -90,6 +92,7 @@ enum ActorMsgPackType: int
     AM_PEERCONFIG,
     AM_ADDBUFF,
     AM_REMOVEBUFF,
+    AM_QUERYDEAD,
     AM_EXP,
     AM_MISS,
     AM_HEAL,
@@ -150,6 +153,8 @@ inline const char *mpkName(int type)
         _add_mpk_type_case(AM_SYS_SLAVEPEERLIST)
         _add_mpk_type_case(AM_OK)
         _add_mpk_type_case(AM_ERROR)
+        _add_mpk_type_case(AM_TRUE)
+        _add_mpk_type_case(AM_FALSE)
         _add_mpk_type_case(AM_BADACTORPOD)
         _add_mpk_type_case(AM_BADCHANNEL)
         _add_mpk_type_case(AM_SDBUFFER)
@@ -220,6 +225,7 @@ inline const char *mpkName(int type)
         _add_mpk_type_case(AM_PEERCONFIG)
         _add_mpk_type_case(AM_ADDBUFF)
         _add_mpk_type_case(AM_REMOVEBUFF)
+        _add_mpk_type_case(AM_QUERYDEAD)
         _add_mpk_type_case(AM_EXP)
         _add_mpk_type_case(AM_MISS)
         _add_mpk_type_case(AM_HEAL)
