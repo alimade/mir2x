@@ -1466,6 +1466,12 @@ corof::awaitable<bool> Monster::validTarget(uint64_t targetUID)
         co_return false;
     }
 
+    const auto healthOpt = co_await queryHealth(targetUID);
+
+    if(!healthOpt.has_value() || healthOpt.value().hp <= 0){
+        co_return false;
+    }
+
     const auto coLocOpt = co_await getCOLocation(targetUID);
 
     if(!coLocOpt.has_value()){
@@ -1473,6 +1479,7 @@ corof::awaitable<bool> Monster::validTarget(uint64_t targetUID)
     }
 
     const auto &coLoc = coLocOpt.value();
+
     if(!inView(coLoc.mapUID, coLoc.x, coLoc.y)){
         co_return false;
     }
