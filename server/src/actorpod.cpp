@@ -17,17 +17,13 @@ extern Server *g_server;
 extern ActorPool *g_actorPool;
 extern ServerArgParser *g_serverArgParser;
 
-ActorPod::ActorPod(uint64_t uid, ServerObject *serverObject)
-    : m_UID([uid]() -> uint64_t
-      {
-          fflassert(uid);
-          fflassert(uidf::getUIDType(uid) != UID_RCV  , uid, uidf::getUIDString(uid));
-          fflassert(uidf::getUIDType(uid) >= UID_BEGIN, uid, uidf::getUIDString(uid));
-          fflassert(uidf::getUIDType(uid) <  UID_END  , uid, uidf::getUIDString(uid));
-          return uid;
-      }())
-    , m_SO(serverObject)
+ActorPod::ActorPod(ServerObject *serverObject)
+    : m_UID(serverObject->UID())
+    , m_SO (serverObject)
 {
+    fflassert(UID());
+    fflassert(getSO());
+
     registerOp(AM_ACTIVATE, [thisptr = this](this auto, const ActorMsgPack &) -> corof::awaitable<>
     {
         if(thisptr->m_SO->m_activated){

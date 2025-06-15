@@ -68,7 +68,7 @@ class ActorPod final
         uint32_t m_channID = 0;
 
     public:
-        explicit ActorPod(uint64_t, ServerObject *);
+        explicit ActorPod(ServerObject *);
 
     public:
         ~ActorPod();

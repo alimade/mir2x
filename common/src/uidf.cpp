@@ -220,6 +220,31 @@ uint64_t uidf::getReceiverSeq(uint64_t uid) { return uid & ((UINT64_C(1) << uidT
 uint64_t uidf::getPeerCoreSeq(uint64_t uid) { return uid & ((UINT64_C(1) << uidTypeBitOff) - 1); }
 uint32_t uidf::getQuestID    (uint64_t uid) { return uid & ((UINT64_C(1) << uidTypeBitOff) - 1); }
 
+bool uidf::isValid(uint64_t uid)
+{
+    if(!uid){
+        return false;
+    }
+
+    if(const auto type = uidf::getUIDType(uid); type < UID_BEGIN || type >= UID_END){
+        return false;
+    }
+    else switch(type){
+        case UID_COR: return true;
+
+        case UID_MAP: return uidf::getMapSeq    (uid, false) > 0;
+        case UID_NPC: return uidf::getNPCSeq    (uid, false) > 0;
+        case UID_MON: return uidf::getMonsterSeq(uid, false) > 0;
+
+        case UID_PLY: return uidf::getPlayerDBID (uid) > 0;
+        case UID_RCV: return uidf::getReceiverSeq(uid) > 0;
+        case UID_QST: return uidf::getQuestID    (uid) > 0;
+
+        case UID_SLO: return true;
+        default     : return false;
+    }
+}
+
 bool uidf::isGM(uint64_t uid)
 {
     return (uidf::getUIDType(uid) == UID_PLY) && (uidf::getPlayerDBID(uid) <= 10);

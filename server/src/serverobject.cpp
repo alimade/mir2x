@@ -138,7 +138,11 @@ ServerObject::LuaThreadRunner::LuaThreadRunner(ServerObject *serverObject)
 }
 
 ServerObject::ServerObject(uint64_t uid)
-    : m_UID(uid)
+    : m_UID([uid]() -> uint64_t
+      {
+          fflassert(uidf::isValid(uid));
+          return uid;
+      }())
 {
     if(g_serverArgParser->sharedConfig().traceActorMessageCount){
         defer([this, lastCheckTick = to_u32(0)]() mutable -> bool
@@ -162,7 +166,7 @@ ServerObject::~ServerObject()
 uint64_t ServerObject::activate()
 {
     fflassert(!m_actorPod);
-    m_actorPod = new ActorPod(m_UID, this);
+    m_actorPod = new ActorPod(this);
 
     beforeActivate();
     m_actorPod->attach();
