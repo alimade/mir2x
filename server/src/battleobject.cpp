@@ -80,12 +80,6 @@ BattleObject::BattleObject(
     : CharObject(uid, argMapUID, mapX, mapY, direction)
     , m_lastAction(ACTION_NONE)
 {
-    m_actorPod->registerOp(AM_QUERYDEAD, [this](const ActorMsgPack &mpk) -> corof::awaitable<>
-    {
-        m_actorPod->post(mpk.fromAddr(), m_dead.get() ? AM_TRUE : AM_FALSE);
-        return {};
-    });
-
     m_lastActionTime.fill(0);
     defer([ptimer = std::make_shared<hres_timer>(), this]() mutable -> bool
     {
@@ -94,6 +88,15 @@ BattleObject::BattleObject(
             ptimer->reset();
         }
         return false;
+    });
+}
+
+void BattleObject::beforeActivate()
+{
+    m_actorPod->registerOp(AM_QUERYDEAD, [this](const ActorMsgPack &mpk) -> corof::awaitable<>
+    {
+        m_actorPod->post(mpk.fromAddr(), m_dead.get() ? AM_TRUE : AM_FALSE);
+        return {};
     });
 }
 

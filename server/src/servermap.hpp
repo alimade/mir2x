@@ -123,6 +123,7 @@ class ServerMap final: public ServerObject
         std::unique_ptr<ServerMap::LuaThreadRunner> m_luaRunner;
 
     private:
+        void beforeActivate() override;
         corof::awaitable<> onActorMsg(const ActorMsgPack &) override;
 
     public:

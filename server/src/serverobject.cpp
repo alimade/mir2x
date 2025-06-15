@@ -159,26 +159,17 @@ ServerObject::~ServerObject()
     delete m_actorPod;
 }
 
-// TODO & TBD
-// when an actor is activated by more than one time, we can
-// 1. delete previously allocated actor and create a new one
-// 2. just return current address
-//
-// Now I use method-2, since the address could hanve been assigned to many other place
-// for communication, delete it may cause problems
-//
-// And if we really want to change the address of current object, maybe we need to
-// delete current object totally and create a new one instead
 uint64_t ServerObject::activate()
 {
     fflassert(!m_actorPod);
     m_actorPod = new ActorPod(m_UID, this);
 
-    // seperate attach call
-    // this triggers the startup callback, i.e. the onActivate()
-    // if automatically call attach() in ActorPod::ctor() then m_actorPod is invalid yet
-
+    beforeActivate();
     m_actorPod->attach();
+
+    // can NOT support afterActivate() here
+    // after ActorPod::attach(), access to m_actorPod must be in actor thread
+
     return UID();
 }
 

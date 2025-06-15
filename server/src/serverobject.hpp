@@ -81,6 +81,11 @@ class ServerObject
         uint64_t activate();
 
     protected:
+        virtual void beforeActivate()
+        {
+        }
+
+    protected:
         virtual corof::awaitable<> onActivate()
         {
             return {};

@@ -1182,11 +1182,14 @@ void ServerMap::updateMapGridGroundItem()
     }
 }
 
+void ServerMap::beforeActivate()
+{
+    m_addCO = std::make_unique<EnableAddCO>(m_actorPod);
+}
+
 corof::awaitable<> ServerMap::onActivate()
 {
     co_await ServerObject::onActivate();
-    m_addCO = std::make_unique<EnableAddCO>(m_actorPod);
-
     co_await loadNPChar();
 
     m_luaRunner = std::make_unique<ServerMap::LuaThreadRunner>(this);

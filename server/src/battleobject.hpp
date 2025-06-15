@@ -111,7 +111,7 @@ class BattleObject: public CharObject
         ~BattleObject() = default;
 
     public:
-        corof::awaitable<> onActivate() override;
+        void beforeActivate() override;
 
     protected:
         virtual void reportCO(uint64_t) = 0;
