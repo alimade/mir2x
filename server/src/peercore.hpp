@@ -20,10 +20,16 @@ class PeerCore: public ServerObject
         ~PeerCore() = default;
 
     protected:
+        void beforeActivate() override
+        {
+            ServerObject::beforeActivate();
+            m_addCO = std::make_unique<EnableAddCO>(m_actorPod);
+        }
+
+    protected:
         corof::awaitable<> onActivate() override
         {
             co_await ServerObject::onActivate();
-            m_addCO = std::make_unique<EnableAddCO>(m_actorPod);
         }
 
     public:

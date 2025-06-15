@@ -1184,6 +1184,7 @@ void ServerMap::updateMapGridGroundItem()
 
 void ServerMap::beforeActivate()
 {
+    ServerObject::beforeActivate();
     m_addCO = std::make_unique<EnableAddCO>(m_actorPod);
 }
 

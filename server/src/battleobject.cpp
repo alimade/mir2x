@@ -93,6 +93,7 @@ BattleObject::BattleObject(
 
 void BattleObject::beforeActivate()
 {
+    CharObject::beforeActivate();
     m_actorPod->registerOp(AM_QUERYDEAD, [this](const ActorMsgPack &mpk) -> corof::awaitable<>
     {
         m_actorPod->post(mpk.fromAddr(), m_dead.get() ? AM_TRUE : AM_FALSE);

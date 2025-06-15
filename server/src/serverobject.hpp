@@ -69,11 +69,6 @@ class ServerObject
     public:
         uint64_t UID() const
         {
-            return rawUID();
-        }
-
-        uint64_t rawUID() const
-        {
             return m_UID;
         }
 
