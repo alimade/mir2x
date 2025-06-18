@@ -15,6 +15,7 @@
 #include <iostream>
 #include "uidf.hpp"
 #include "raiitimer.hpp"
+#include "nodeacwrapper.hpp"
 #include "actormsgpack.hpp"
 #include "actormonitor.hpp"
 #include "delaydriver.hpp"
@@ -95,46 +96,40 @@ class ActorPool final
         class UIDSet
         {
             private:
-                std::unordered_set<uint64_t> m_set;
-                std::vector<std::unordered_set<uint64_t>::node_type> m_setNodes;
+                NodeACWrapper<std::unordered_set<uint64_t>> m_set;
 
             public:
                 bool contains(uint64_t uid) const
                 {
-                    return m_set.contains(uid);
+                    return m_set.c.contains(uid);
                 }
 
                 bool erase(uint64_t uid)
                 {
-                    if(auto p = m_set.find(uid); p != m_set.end()){
-                        m_setNodes.push_back(m_set.extract(p));
-                        return true;
-                    }
-                    return false;
+                    return m_set.erase(uid).second;
                 }
 
                 bool insert(uint64_t uid)
                 {
-                    if(m_set.contains(uid)){
+                    if(m_set.c.contains(uid)){
                         return false;
                     }
 
-                    if(m_setNodes.empty()){
-                        m_set.insert(uid);
+                    if(m_set.node_empty()){
+                        m_set.c.insert(uid);
                     }
                     else{
-                        m_setNodes.back().value() = uid;
-                        m_set.insert(std::move(m_setNodes.back()));
-                        m_setNodes.pop_back();
+                        m_set.insert_node([uid](auto &node)
+                        {
+                            node.value() = uid;
+                        });
                     }
                     return true;
                 }
 
                 void clear()
                 {
-                    while(!m_set.empty()){
-                        m_setNodes.push_back(m_set.extract(m_set.begin()));
-                    }
+                    m_set.clear();
                 }
         };
 
