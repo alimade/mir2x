@@ -45,8 +45,8 @@ template<typename C> class NodeACWrapper
     public:
         void clear()
         {
-            for(auto iter = c.begin(); iter != c.end();){
-                iter = erase(iter).first;
+            while(!c.empty()){
+                m_nodes.push_back(c.extract(c.begin()));
             }
         }
 
