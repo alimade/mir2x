@@ -56,7 +56,7 @@ template<typename C> class NodeACWrapper
         }
 
     public:
-        template<typename Func> std::pair<typename C::iterator, bool> fast_insert(Func && func)
+        template<typename Func> std::pair<typename C::iterator, bool> insert_node(Func && func)
         {
             func(m_nodes.back());
             if constexpr (has_insert_return_type<C>::value){
