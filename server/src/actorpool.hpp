@@ -111,19 +111,17 @@ class ActorPool final
 
                 bool insert(uint64_t uid)
                 {
+                    if(m_set.has_node()){
+                        // if there is cached node
+                        // insert directly to avoid 1 extra search
+                        return m_set.insert_node([uid](auto &node){ node.value() = uid; }).second;
+                    }
+
                     if(m_set.c.contains(uid)){
                         return false;
                     }
 
-                    if(m_set.node_empty()){
-                        m_set.c.insert(uid);
-                    }
-                    else{
-                        m_set.insert_node([uid](auto &node)
-                        {
-                            node.value() = uid;
-                        });
-                    }
+                    m_set.c.insert(uid);
                     return true;
                 }
 
