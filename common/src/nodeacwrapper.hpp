@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -14,11 +15,30 @@ template<typename C> class NodeACWrapper
         template<typename T                 > struct has_insert_return_type<T, std::void_t<typename T::insert_return_type>>: std:: true_type {};
 
     private:
+        const size_t m_maxRatio;
+        const size_t m_avgRatioOld;
+        const size_t m_avgRatioNew;
+
+    private:
+        size_t m_avgCount = 0;
+
+    private:
         std::remove_cvref_t<C> m_container;
         std::vector<typename C::node_type> m_nodes;
 
     public:
         const std::remove_cvref_t<C> & c = m_container;
+
+    public:
+        NodeACWrapper(
+                size_t maxRatio    = SIZE_MAX,
+                size_t avgRatioOld = 2,
+                size_t avgRatioNew = 1)
+
+            : m_maxRatio   (maxRatio   )
+            , m_avgRatioOld(avgRatioOld)
+            , m_avgRatioNew(avgRatioNew)
+        {}
 
     public:
         bool has_node() const noexcept
@@ -29,9 +49,27 @@ template<typename C> class NodeACWrapper
     public:
         template<typename Iter> requires (std::same_as<Iter, typename C::iterator> || std::same_as<Iter, typename C::const_iterator>) std::pair<Iter, bool> erase(Iter p)
         {
-            auto nextp = std::next(p);
-            m_nodes.push_back(m_container.extract(p));
-            return {nextp, true};
+            switch(m_maxRatio){
+                case 0: // never keep nodes
+                    {
+                        return {m_container.erase(p), true};
+                    }
+                case SIZE_MAX: // always keep nodes
+                    {
+                        return {erase_by_extract(p), true};
+                    }
+                default:
+                    {
+                        update_avg_count();
+                        if(const auto maxNodeCount = m_avgCount * m_maxRatio; m_nodes.size() < maxNodeCount){
+                            return {erase_by_extract(p), true};
+                        }
+                        else{
+                            m_nodes.resize(maxNodeCount);
+                            return {m_container.erase(p), true};
+                        }
+                    }
+            }
         }
 
     public:
@@ -80,5 +118,18 @@ template<typename C> class NodeACWrapper
                 m_nodes.pop_back();
                 return {r, true};
             }
+        }
+
+    private:
+        void update_avg_count() noexcept
+        {
+            m_avgCount = (m_avgCount * m_avgRatioOld + m_container.size() * m_avgRatioNew) / (m_avgRatioOld + m_avgRatioNew);
+        }
+
+        template<typename Iter> auto erase_by_extract(Iter iter)
+        {
+            auto nextp = std::next(p);
+            m_nodes.push_back(m_container.extract(p));
+            return nextp;
         }
 };
