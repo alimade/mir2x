@@ -13,11 +13,12 @@ template<typename C> class NodeACWrapper
         template<typename T, typename = void> struct has_insert_return_type                                                : std::false_type {};
         template<typename T                 > struct has_insert_return_type<T, std::void_t<typename T::insert_return_type>>: std:: true_type {};
 
-    public:
-        std::remove_cvref_t<C> c;
-
     private:
+        std::remove_cvref_t<C> m_container;
         std::vector<typename C::node_type> m_nodes;
+
+    public:
+        const std::remove_cvref_t<C> & c = m_container;
 
     public:
         bool has_node() const noexcept
@@ -29,24 +30,24 @@ template<typename C> class NodeACWrapper
         template<typename Iter> requires (std::same_as<Iter, typename C::iterator> || std::same_as<Iter, typename C::const_iterator>) std::pair<Iter, bool> erase(Iter p)
         {
             auto nextp = std::next(p);
-            m_nodes.push_back(c.extract(p));
+            m_nodes.push_back(m_container.extract(p));
             return {nextp, true};
         }
 
     public:
         template<typename Key> auto erase(this auto && self, const Key & key)
         {
-            if(auto iter = self.c.find(key); iter != self.c.end()){
+            if(auto iter = self.m_container.find(key); iter != self.m_container.end()){
                 return self.erase(iter);
             }
-            return std::pair(self.c.end(), false);
+            return std::pair(self.m_container.end(), false);
         }
 
     public:
         void clear()
         {
-            while(!c.empty()){
-                m_nodes.push_back(c.extract(c.begin()));
+            while(!m_container.empty()){
+                m_nodes.push_back(m_container.extract(m_container.begin()));
             }
         }
 
@@ -56,11 +57,16 @@ template<typename C> class NodeACWrapper
         }
 
     public:
-        template<typename Func> std::pair<typename C::iterator, bool> insert_node(Func && func)
+        template<typename Func> auto alloc_insert(Func && func)
+        {
+            return func(m_container);
+        }
+
+        template<typename Func> std::pair<typename C::iterator, bool> node_insert(Func && func)
         {
             func(m_nodes.back());
             if constexpr (has_insert_return_type<C>::value){
-                if(auto r = c.insert(std::move(m_nodes.back())); r.inserted){
+                if(auto r = m_container.insert(std::move(m_nodes.back())); r.inserted){
                     m_nodes.pop_back();
                     return {r.position, true};
                 }
@@ -70,7 +76,7 @@ template<typename C> class NodeACWrapper
                 }
             }
             else{
-                auto r = c.insert(std::move(m_nodes.back()));
+                auto r = m_container.insert(std::move(m_nodes.back()));
                 m_nodes.pop_back();
                 return {r, true};
             }
