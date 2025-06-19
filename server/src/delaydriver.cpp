@@ -26,14 +26,14 @@ DelayDriver::DelayDriver()
               {
                   std::unique_lock lock(m_mutex);
 
-                  if(m_timers.empty()){
+                  if(m_timers.c.empty()){
                       m_cond.wait(lock, [this]()
                       {
-                          return m_stopRequested || !m_timers.empty() || !m_cancelledTimerArgs.empty();
+                          return m_stopRequested || !m_timers.c.empty() || !m_cancelledTimerArgs.empty();
                       });
                   }
                   else{
-                      m_cond.wait_until(lock, m_timers.begin()->first, [this]()
+                      m_cond.wait_until(lock, m_timers.c.begin()->first, [this]()
                       {
                           return m_stopRequested || !m_cancelledTimerArgs.empty();
                       });
@@ -43,10 +43,10 @@ DelayDriver::DelayDriver()
                       break;
                   }
 
-                  for(const auto now = clock_type::now(); !m_timers.empty() && m_timers.begin()->first <= now;){
-                      timeoutArgs.push_back(m_timers.begin()->second.cbArg);
-                      m_timerNodes.push_back(std::move(m_timers.extract(m_timers.begin())));
-                      m_timerIdNodes.push_back(std::move(m_timerIds.extract(m_timerNodes.back().mapped().seqID)));
+                  for(const auto now = clock_type::now(); !m_timers.c.empty() && m_timers.c.begin()->first <= now;){
+                      timeoutArgs.push_back(m_timers.c.begin()->second.cbArg);
+                      m_timerIds.erase(m_timers.c.begin()->second.seqID);
+                      m_timers.erase(m_timers.c.begin());
                   }
 
                   std::swap(cancelledArgs, m_cancelledTimerArgs);
@@ -68,7 +68,7 @@ DelayDriver::DelayDriver()
               onTimerCallback(cbArg, false);
           }
 
-          for(const auto &timer: m_timers){
+          for(const auto &timer: m_timers.c){
               onTimerCallback(timer.second.cbArg, false);
           }
       })
@@ -106,29 +106,35 @@ uint64_t DelayDriver::addTimer(const std::pair<uint64_t, uint64_t> &cbArg, uint6
             seqID = m_seqID = (m_seqID + 1);
         }
 
-        needReschedule = m_timers.empty() || (expireAt < m_timers.begin()->first);
-
+        needReschedule = m_timers.c.empty() || (expireAt < m_timers.c.begin()->first);
         timer_map::iterator iter;
-        if(m_timerNodes.empty()){
-            iter = m_timers.emplace(expireAt, TimerEntry{seqID, cbArg});
+
+        if(m_timers.has_node()){
+            iter = m_timers.node_insert([expireAt, seqID, &cbArg](auto &node)
+            {
+                node.key() = expireAt;
+                node.mapped() = TimerEntry{seqID, cbArg};
+            }).first;
         }
         else{
-            m_timerNodes.back().key() = expireAt;
-            m_timerNodes.back().mapped() = TimerEntry{seqID, cbArg};
-
-            iter = m_timers.insert(std::move(m_timerNodes.back()));
-            m_timerNodes.pop_back();
+            iter = m_timers.alloc_insert([expireAt, seqID, &cbArg](auto &c)
+            {
+                return c.emplace(expireAt, TimerEntry{seqID, cbArg});
+            });
         }
 
-        if(m_timerIdNodes.empty()){
-            m_timerIds.emplace(seqID, iter);
+        if(m_timerIds.has_node()){
+            m_timerIds.node_insert([seqID, &iter](auto &node)
+            {
+                node.key() = seqID;
+                node.mapped() = iter;
+            });
         }
         else{
-            m_timerIdNodes.back().key() = seqID;
-            m_timerIdNodes.back().mapped() = iter;
-
-            m_timerIds.insert(std::move(m_timerIdNodes.back()));
-            m_timerIdNodes.pop_back();
+            m_timerIds.alloc_insert([seqID, &iter](auto &c)
+            {
+                c.emplace(seqID, iter);
+            });
         }
     }
 
@@ -154,18 +160,17 @@ uint64_t DelayDriver::addWaiter(const std::pair<uint64_t, uint64_t> &cbArg)
             seqID = m_seqID = (m_seqID + 2);
         }
 
-        waiter_map::iterator iter;
         if(m_waiters.has_node()){
-            iter = m_waiters.node_insert([seqID, &cbArg](auto &node)
+            m_waiters.node_insert([seqID, &cbArg](auto &node)
             {
                 node.key() = seqID;
                 node.mapped() = cbArg;
-            }).first;
+            });
         }
         else{
-            iter = m_waiters.alloc_insert([seqID, &cbArg](auto &c)
+            m_waiters.alloc_insert([seqID, &cbArg](auto &c)
             {
-                return c.emplace(seqID, cbArg).first;
+                c.emplace(seqID, cbArg);
             });
         }
     }
@@ -211,12 +216,12 @@ std::optional<bool> DelayDriver::cancelTimer(uint64_t id, bool triggerInPlace)
             return std::nullopt;
         }
 
-        if(auto p = m_timerIds.find(id); p != m_timerIds.end()){
+        if(auto p = m_timerIds.c.find(id); p != m_timerIds.c.end()){
             found = true;
             cbArg = p->second->second.cbArg;
 
-            m_timerNodes  .push_back(std::move(m_timers  .extract(p->second)));
-            m_timerIdNodes.push_back(std::move(m_timerIds.extract(p)));
+            m_timers.erase(p->second);
+            m_timerIds.erase(p);
 
             if(!triggerInPlace){
                 m_cancelledTimerArgs.push_back(cbArg);

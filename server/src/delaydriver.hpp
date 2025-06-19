@@ -20,30 +20,24 @@ class DelayDriver
             std::pair<uint64_t, uint64_t> cbArg;
         };
 
+    private:
         using clock_type = std::chrono::steady_clock;
 
-        using waiter_map  = std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>>;
-        using waiter_node = waiter_map::node_type;
-
-        using timer_map  = std::multimap<clock_type::time_point, TimerEntry>;
-        using timer_node = timer_map::node_type;
-
-        using timer_id_map  = std::map<uint64_t, timer_map::iterator>;
-        using timer_id_node = timer_id_map::node_type;
+    private:
+        using   waiter_map = std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>>;
+        using    timer_map = std::multimap<clock_type::time_point, TimerEntry>;
+        using timer_id_map = std::map<uint64_t, timer_map::iterator>;
 
     private:
         uint64_t m_seqID = 1;
         bool m_stopRequested = false;
 
     private:
-        NodeACWrapper<waiter_map> m_waiters; // timers that never expire
+        NodeACWrapper<  waiter_map> m_waiters; // timers that never expire
+        NodeACWrapper<   timer_map> m_timers;
+        NodeACWrapper<timer_id_map> m_timerIds;
 
-        timer_map m_timers;
-        std::vector<timer_node> m_timerNodes;
-
-        timer_id_map m_timerIds;
-        std::vector<timer_id_node> m_timerIdNodes;
-
+    private:
         std::vector<std::pair<uint64_t, uint64_t>> m_cancelledTimerArgs;
 
     private:
