@@ -30,7 +30,7 @@ template<typename C> class NodeACWrapper
         const std::remove_cvref_t<C> & c = m_container;
 
     public:
-        NodeACWrapper(
+        explicit NodeACWrapper(
                 size_t maxRatio    = SIZE_MAX,
                 size_t avgRatioOld = 2,
                 size_t avgRatioNew = 1)
