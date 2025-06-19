@@ -155,15 +155,18 @@ uint64_t DelayDriver::addWaiter(const std::pair<uint64_t, uint64_t> &cbArg)
         }
 
         waiter_map::iterator iter;
-        if(m_waiterNodes.empty()){
-            iter = m_waiters.emplace(seqID, cbArg).first;
+        if(m_waiters.has_node()){
+            iter = m_waiters.node_insert([seqID, &cbArg](auto &node)
+            {
+                node.key() = seqID;
+                node.mapped() = cbArg;
+            }).first;
         }
         else{
-            m_waiterNodes.back().key() = seqID;
-            m_waiterNodes.back().mapped() = cbArg;
-
-            iter = m_waiters.insert(std::move(m_waiterNodes.back())).position;
-            m_waiterNodes.pop_back();
+            iter = m_waiters.alloc_insert([seqID, &cbArg](auto &c)
+            {
+                return c.emplace(seqID, cbArg).first;
+            });
         }
     }
     return seqID;
@@ -242,11 +245,11 @@ std::optional<bool> DelayDriver::cancelWaiter(uint64_t id, bool triggerInPlace)
             return std::nullopt;
         }
 
-        if(auto p = m_waiters.find(id); p != m_waiters.end()){
+        if(auto p = m_waiters.c.find(id); p != m_waiters.c.end()){
             found = true;
             cbArg = p->second;
 
-            m_waiterNodes.push_back(std::move(m_waiters.extract(p)));
+            m_waiters.erase(p);
             if(!triggerInPlace){
                 m_cancelledTimerArgs.push_back(cbArg);
             }
