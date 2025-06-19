@@ -126,7 +126,7 @@ template<typename C> class NodeACWrapper
             m_avgCount = (m_avgCount * m_avgRatioOld + m_container.size() * m_avgRatioNew) / (m_avgRatioOld + m_avgRatioNew);
         }
 
-        template<typename Iter> auto erase_by_extract(Iter iter)
+        template<typename Iter> auto erase_by_extract(Iter p)
         {
             auto nextp = std::next(p);
             m_nodes.push_back(m_container.extract(p));
