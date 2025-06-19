@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-template<typename C> class NodeACWrapper
+template<typename C> class ACNodeWrapper
 {
     private:
         template<typename T, typename = void> struct has_insert_return_type                                                : std::false_type {};
@@ -30,7 +30,7 @@ template<typename C> class NodeACWrapper
         const std::remove_cvref_t<C> & c = m_container;
 
     public:
-        explicit NodeACWrapper(
+        explicit ACNodeWrapper(
                 size_t maxRatio    = SIZE_MAX,
                 size_t avgRatioOld = 2,
                 size_t avgRatioNew = 1)

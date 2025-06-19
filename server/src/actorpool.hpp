@@ -15,7 +15,7 @@
 #include <iostream>
 #include "uidf.hpp"
 #include "raiitimer.hpp"
-#include "nodeacwrapper.hpp"
+#include "acnodewrapper.hpp"
 #include "actormsgpack.hpp"
 #include "actormonitor.hpp"
 #include "delaydriver.hpp"
@@ -96,7 +96,7 @@ class ActorPool final
         class UIDSet
         {
             private:
-                NodeACWrapper<std::unordered_set<uint64_t>> m_set;
+                ACNodeWrapper<std::unordered_set<uint64_t>> m_set;
 
             public:
                 bool contains(uint64_t uid) const

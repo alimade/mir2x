@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 #include <chrono>
-#include "nodeacwrapper.hpp"
+#include "acnodewrapper.hpp"
 
 class DelayDriver
 {
@@ -33,9 +33,9 @@ class DelayDriver
         bool m_stopRequested = false;
 
     private:
-        NodeACWrapper<  waiter_map> m_waiters; // timers that never expire
-        NodeACWrapper<   timer_map> m_timers;
-        NodeACWrapper<timer_id_map> m_timerIds;
+        ACNodeWrapper<  waiter_map> m_waiters; // timers that never expire
+        ACNodeWrapper<   timer_map> m_timers;
+        ACNodeWrapper<timer_id_map> m_timerIds;
 
     private:
         std::vector<std::pair<uint64_t, uint64_t>> m_cancelledTimerArgs;
