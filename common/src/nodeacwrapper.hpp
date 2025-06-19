@@ -41,9 +41,9 @@ template<typename C> class NodeACWrapper
         {}
 
     public:
-        bool has_node() const noexcept
+        size_t has_node() const noexcept
         {
-            return !m_nodes.empty();
+            return m_nodes.size();
         }
 
     public:
