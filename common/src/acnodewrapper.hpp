@@ -1,4 +1,5 @@
 #pragma once
+#include <stdexcept>
 #include <cstdint>
 #include <type_traits>
 #include <utility>
@@ -38,7 +39,22 @@ template<typename C> class ACNodeWrapper
             : m_maxRatio   (maxRatio   )
             , m_avgRatioOld(avgRatioOld)
             , m_avgRatioNew(avgRatioNew)
-        {}
+        {
+            switch(m_maxRatio){
+                case 0:
+                case SIZE_MAX:
+                    {
+                        break;
+                    }
+                default:
+                    {
+                        if(m_avgRatioOld + m_avgRatioNew == 0){
+                            throw std::invalid_argument(__func__);
+                        }
+                        break;
+                    }
+            }
+        }
 
     public:
         size_t has_node() const noexcept
