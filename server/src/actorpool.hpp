@@ -12,102 +12,172 @@
 #include <cstdint>
 #include <shared_mutex>
 #include <unordered_map>
+#include <iostream>
 #include "uidf.hpp"
 #include "raiitimer.hpp"
+#include "acnodewrapper.hpp"
 #include "actormsgpack.hpp"
 #include "actormonitor.hpp"
+#include "delaydriver.hpp"
+#include "actornetdriver.hpp"
 #include "parallel_hashmap/phmap.h"
 
 class ActorPod;
+class NetDriver;
 class Receiver;
 class Dispatcher;
 class SyncDriver;
+class DelayDriver;
+class ActorNetDriver;
+class PeerCore;
 
 class ActorPool final
 {
     private:
         friend class ActorPod;
+        friend class NetDriver;
         friend class Receiver;
         friend class Dispatcher;
         friend class SyncDriver;
+        friend class DelayDriver;
+        friend class ActorNetDriver;
 
     public:
-        struct UIDComper
+        struct UIDVec
         {
-            bool operator () (uint64_t x, uint64_t y) const
+            size_t begin = 0;
+            std::vector<uint64_t> vec {};
+
+            template<typename Func> void for_each(Func &&fn) const
             {
-                return uidf::getUIDType(x) > uidf::getUIDType(y);
+                for(size_t i = begin; i < vec.size(); ++i){
+                    fn(vec.at(i));
+                }
+            }
+
+            void clear()
+            {
+                begin = 0;
+                vec.clear();
+            }
+
+            bool empty() const noexcept
+            {
+                return begin >= vec.size();
+            }
+
+            size_t size() const noexcept
+            {
+                if(empty()){
+                    return 0;
+                }
+                else{
+                    return vec.size() - begin;
+                }
+            }
+
+            uint64_t pop_front()
+            {
+                return vec.at(begin++);
+            }
+
+            void push_back(uint64_t uid)
+            {
+                vec.push_back(uid);
+            }
+
+            void swap(UIDVec &other)
+            {
+                vec.swap(other.vec);
+                std::swap(begin, other.begin);
             }
         };
 
-        class UIDPriorityQueue
+        class UIDSet
         {
             private:
-                struct UIDPQImpl: public std::priority_queue<uint64_t, std::vector<uint64_t>, UIDComper>
-                {
-                    UIDPQImpl()
-                    {
-                        this->c.reserve(2048);
-                    }
-
-                    void uidSwap(std::vector<uint64_t> &uidList)
-                    {
-                        std::swap(uidList, this->c);
-                    }
-                };
-
-            private:
-                UIDPQImpl m_PQ;
-                phmap::flat_hash_set<uint64_t> m_uidSet;
+                ACNodeWrapper<std::unordered_set<uint64_t>> m_set;
 
             public:
-                uint64_t pick_top()
+                bool contains(uint64_t uid) const
                 {
-                    const auto uidTop = m_PQ.top();
-                    m_PQ.pop();
-
-                    m_uidSet.erase(uidTop);
-                    return uidTop;
+                    return m_set.c.contains(uid);
                 }
 
-                void pick_top(std::vector<uint64_t> &uidList, size_t maxPop)
+                bool erase(uint64_t uid)
                 {
-                    uidList.clear();
-                    if(maxPop > 0){
-                        for(size_t i = 0; i < maxPop; ++i){
-                            if(empty()){
-                                break;
-                            }
-                            uidList.push_back(pick_top());
-                        }
+                    return m_set.erase(uid).second;
+                }
+
+                bool insert(uint64_t uid)
+                {
+                    if(m_set.has_node()){
+                        // if there is cached node
+                        // insert directly to avoid 1 extra search
+                        return m_set.node_insert([uid](auto &node){ node.value() = uid; }).second;
                     }
-                    else{
-                        m_PQ.uidSwap(uidList);
-                        m_uidSet.clear();
-                    }
-                }
 
-            public:
-                bool empty() const
-                {
-                    return m_PQ.empty();
-                }
-
-                size_t size() const
-                {
-                    return m_PQ.size();
-                }
-
-            public:
-                bool push(uint64_t uid)
-                {
-                    if(m_uidSet.contains(uid)){
+                    if(m_set.c.contains(uid)){
                         return false;
                     }
 
-                    m_PQ.push(uid);
-                    m_uidSet.insert(uid);
+                    m_set.alloc_insert([uid](auto &c){ c.insert(uid); });
                     return true;
+                }
+
+                void clear()
+                {
+                    m_set.clear();
+                }
+        };
+
+        class UniqUIDVec
+        {
+            private:
+                UIDVec m_uidVec;
+                UIDSet m_uidSet;
+
+            public:
+                uint64_t pop_front() // assume not empty
+                {
+                    const auto uidFront = m_uidVec.pop_front();
+                    m_uidSet.erase(uidFront);
+                    return uidFront;
+                }
+
+                void pop_front(UIDVec &uidList, size_t maxPick)
+                {
+                    uidList.clear();
+                    if(maxPick == 0 || maxPick >= m_uidVec.size()){
+                        m_uidVec.swap(uidList);
+                        m_uidSet.clear();
+                    }
+                    else{
+                        for(size_t i = 0; i < maxPick; ++i){
+                            uidList.push_back(pop_front());
+                        }
+                    }
+                }
+
+            public:
+                bool push_back(uint64_t uid)
+                {
+                    if(m_uidSet.insert(uid)){
+                        m_uidVec.push_back(uid);
+                        return true;
+                    }
+                    return false;
+                }
+
+            public:
+                bool empty() const noexcept
+                {
+                    return m_uidVec.empty();
+                }
+
+                size_t size() const noexcept
+                {
+                    return m_uidVec.size();
                 }
         };
 
@@ -152,7 +222,7 @@ class ActorPool final
         {
             private:
                 bool m_closed = false;
-                UIDPriorityQueue m_uidQ;
+                UniqUIDVec m_uidUVec;
 
             private:
                 mutable std::mutex m_lock;
@@ -170,7 +240,7 @@ class ActorPool final
                         if(!lockGuard){
                             return false;
                         }
-                        added = m_uidQ.push(uid);
+                        added = m_uidUVec.push_back(uid);
                     }
 
                     if(added){
@@ -179,14 +249,14 @@ class ActorPool final
                     return true;
                 }
 
-                bool try_pop(std::vector<uint64_t> &uidList, size_t maxPop)
+                bool try_pop(UIDVec &uidList, size_t maxPick)
                 {
                     TryLockGuard<decltype(m_lock)> lockGuard(m_lock);
-                    if(!lockGuard || m_uidQ.empty()){
+                    if(!lockGuard || m_uidUVec.empty()){
                         return false;
                     }
 
-                    m_uidQ.pick_top(uidList, maxPop);
+                    m_uidUVec.pop_front(uidList, maxPick);
                     return true;
                 }
 
@@ -196,7 +266,7 @@ class ActorPool final
                     bool added = false;
                     {
                         std::lock_guard<decltype(m_lock)> lockGuard(m_lock);
-                        added = m_uidQ.push(uid);
+                        added = m_uidUVec.push_back(uid);
                     }
 
                     if(added){
@@ -204,34 +274,34 @@ class ActorPool final
                     }
                 }
 
-                void pop(std::vector<uint64_t> &uidList, size_t maxPop, uint64_t msec, int &ec)
+                void pop(UIDVec &uidList, size_t maxPick, uint64_t msec, int &ec)
                 {
                     std::unique_lock<decltype(m_lock)> lockGuard(m_lock);
                     if(msec > 0){
                         const bool wait_res = m_cond.wait_for(lockGuard, std::chrono::milliseconds(msec), [this]() -> bool
                         {
-                            return m_closed || !m_uidQ.empty();
+                            return m_closed || !m_uidUVec.empty();
                         });
 
                         if(wait_res){
                             // pred returns true
                             // means either not expired, or even expired but the pred evals to true now
 
-                            // when queue is closed AND there are still tasks in m_uidQ
+                            // when queue is closed AND there are still tasks in m_uidUVec
                             // what I should do ???
 
-                            // currently I returns the task pending in the m_uidQ
+                            // currently I returns the task pending in the m_uidUVec
                             // so a UIDQueue can be closed but you can still pop task from it
 
-                            if(!m_uidQ.empty()){
+                            if(!m_uidUVec.empty()){
                                 ec = E_DONE;
-                                m_uidQ.pick_top(uidList, maxPop);
+                                m_uidUVec.pop_front(uidList, maxPick);
                             }
                             else if(m_closed){
                                 ec = E_QCLOSED;
                             }
                             else{
-                                // UIDQueue is not closed and m_uidQ is empty
+                                // UIDQueue is not closed and m_uidUVec is empty
                                 // then pred evals to true, can only be time expired
                                 ec = E_TIMEOUT;
                             }
@@ -242,22 +312,22 @@ class ActorPool final
                             // 1. the time has been expired
                             // 2. the pred still returns false, means:
                             //      1. queue is not closed, and
-                            //      2. m_uidQ is still empty
+                            //      2. m_uidUVec is still empty
                             ec = E_TIMEOUT;
                         }
                     }
                     else{
                         m_cond.wait(lockGuard, [this]() -> bool
                         {
-                            return m_closed || !m_uidQ.empty();
+                            return m_closed || !m_uidUVec.empty();
                         });
 
-                        // when there is task in m_uidQ
+                        // when there is task in m_uidUVec
                         // we always firstly pick & return the task before report E_CLOSED
 
-                        if(!m_uidQ.empty()){
+                        if(!m_uidUVec.empty()){
                             ec = E_DONE;
-                            m_uidQ.pick_top(uidList, maxPop);
+                            m_uidUVec.pop_front(uidList, maxPick);
                         }
                         else{
                             ec = E_QCLOSED;
@@ -278,7 +348,7 @@ class ActorPool final
                 size_t size_hint() const
                 {
                     std::lock_guard<decltype(m_lock)> lockGuard(m_lock);
-                    return m_uidQ.size();
+                    return m_uidUVec.size();
                 }
         };
 
@@ -331,15 +401,15 @@ class ActorPool final
                 MailboxMutex &m_mutexRef;
 
             public:
-                MailboxLock(MailboxMutex &rstMutex, int nWorkerID)
+                MailboxLock(MailboxMutex &m, int workerID)
                     : m_expected(MAILBOX_READY)
                     , m_workerID(MAILBOX_ERROR)
-                    , m_mutexRef(rstMutex)
+                    , m_mutexRef(m)
                 {
                     // need to save the worker id
                     // since the mailbox may get detached quietly
-                    if(m_mutexRef.m_status.compare_exchange_strong(m_expected, nWorkerID)){
-                        m_workerID = nWorkerID;
+                    if(m_mutexRef.m_status.compare_exchange_strong(m_expected, workerID)){
+                        m_workerID = workerID;
                     }
                 }
 
@@ -351,14 +421,18 @@ class ActorPool final
                             if(m_expected != MAILBOX_DETACHED){
                                 // big error here and should never happen
                                 // someone stolen the mailbox without accquire the lock
-                                std::abort();
+                                std::cerr << "MailboxLock::dtor failure" << std::endl;
+                                std::terminate();
                             }
                         }
                     }
                 }
 
-                MailboxLock(const MailboxLock &) = delete;
-                MailboxLock &operator = (MailboxLock) = delete;
+            public:
+                MailboxLock              (      MailboxLock &&) = delete;
+                MailboxLock              (const MailboxLock & ) = delete;
+                MailboxLock & operator = (      MailboxLock &&) = delete;
+                MailboxLock & operator = (const MailboxLock & ) = delete;
 
             public:
                 bool locked() const
@@ -387,12 +461,15 @@ class ActorPool final
             std::vector<std::pair<ActorMsgPack, uint64_t>> currQ;
             std::vector<std::pair<ActorMsgPack, uint64_t>> nextQ;
 
-            std::function<void()> atStart;
             std::function<void()> atExit;
 
             // pool can automatically send METRONOME to actorpod
             // this record last send time, in ms
             uint64_t lastUpdateTime = 0;
+
+            // put ctor in actorpool.cpp
+            // ActorPod is incomplete type in actorpool.hpp
+            Mailbox(ActorPod *, bool);
 
             // put a monitor structure and always maintain it
             // then no need to acquire schedLock to dump the monitor
@@ -417,10 +494,6 @@ class ActorPool final
                     to_u32(monitor.messagePending.load()),
                 };
             }
-
-            // put ctor in actorpool.cpp
-            // ActorPod is incomplete type in actorpool.hpp
-            Mailbox(ActorPod *, std::function<void()>);
         };
 
         struct MailboxSubBucket
@@ -457,9 +530,6 @@ class ActorPool final
             UIDQueue uidQPending;
             std::array<MailboxSubBucket, m_subBucketCount> subBucketList;
         };
-
-    private:
-        const uint32_t m_logicFPS;
 
     private:
         std::atomic<size_t> m_countRunning {0};
@@ -520,11 +590,19 @@ class ActorPool final
         };
 
     private:
+        std::unique_ptr<PeerCore> m_peerCore;
+
+    private:
         std::mutex m_receiverLock;
         std::unordered_map<uint64_t, Receiver *> m_receiverList;
 
+    private:
+        std::unique_ptr<NetDriver> m_netDriver;
+        std::unique_ptr<DelayDriver> m_delayDriver;
+        std::unique_ptr<ActorNetDriver> m_actorNetDriver;
+
     public:
-        ActorPool(int, int);
+        ActorPool(int);
 
     public:
         ~ActorPool();
@@ -540,27 +618,51 @@ class ActorPool final
         bool isActorThread(int) const;
 
     private:
+        void attach(ActorPod *);
         void attach(Receiver *);
-        void attach(ActorPod *, std::function<void()>);
 
     private:
         void detach(const Receiver *);
         void detach(const ActorPod *, std::function<void()>);
 
     public:
-        void launchPool();
+        size_t peerCount() const
+        {
+            return m_actorNetDriver->peerCount();
+        }
+
+        size_t peerIndex() const
+        {
+            return m_actorNetDriver->peerIndex();
+        }
+
+    public:
         bool checkUIDValid(uint64_t) const;
+
+    public:
+        void launch();  // --launch-+-closeAcceptor
+                        //          |
+                        //          +-launchBalance-+-launchPool
+                        //                          |
+                        //                          +-launchNet
+    private:
+        void launchBalance();
+
+    private:
+        void launchPool();
+        void launchNet(int);
 
     private:
         uint64_t GetInnActorUID();
 
     private:
         bool postMessage(uint64_t, ActorMsgPack);
+        bool postLocalMessage(uint64_t, ActorMsgPack);
 
     private:
         void runOneUID(uint64_t);
-        bool runOneMailbox(Mailbox *, bool, uint64_t);
-        void runOneMailboxBucket(int, uint64_t);
+        bool runOneMailbox(Mailbox *); // return false if mailbox detached
+        void runOneMailboxBucket(int);
 
     private:
         void clearOneMailbox(Mailbox *);
@@ -598,4 +700,15 @@ class ActorPool final
     private:
         Mailbox *tryGetMailboxPtr(uint64_t);
         std::pair<MailboxSubBucket::RLockGuard, Mailbox *> tryGetRLockedMailboxPtr(uint64_t);
+
+    public:
+        uint64_t requestTimeout(const std::pair<uint64_t, uint64_t> &fromAddr, uint64_t tick)
+        {
+            return m_delayDriver->add(fromAddr, tick);
+        }
+
+        void cancelTimeout(uint64_t key)
+        {
+            m_delayDriver->cancel(key);
+        }
 };

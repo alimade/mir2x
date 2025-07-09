@@ -3,9 +3,11 @@
 #include "imeboard.hpp"
 #include "processrun.hpp"
 #include "guimanager.hpp"
+#include "clientargparser.hpp"
 
 extern IMEBoard *g_imeBoard;
 extern SDLDevice *g_sdlDevice;
+extern ClientArgParser *g_clientArgParser;
 
 GUIManager::GUIManager(ProcessRun *proc)
     : Widget
@@ -13,8 +15,8 @@ GUIManager::GUIManager(ProcessRun *proc)
           DIR_UPLEFT,
           0,
           0,
-          g_sdlDevice->getRendererWidth(),
-          g_sdlDevice->getRendererHeight(),
+          [](const Widget *){ return g_sdlDevice->getRendererWidth();  },
+          [](const Widget *){ return g_sdlDevice->getRendererHeight(); },
       }
 
     , m_processRun(proc)
@@ -65,6 +67,12 @@ GUIManager::GUIManager(ProcessRun *proc)
     , m_miniMapBoard
       {
           proc,
+      }
+
+    , m_acutionBoard
+      {
+          proc,
+          this,
       }
 
     , m_purchaseBoard
@@ -143,7 +151,9 @@ GUIManager::GUIManager(ProcessRun *proc)
       }
 {
     fflassert(m_processRun);
-    g_imeBoard->dropFocus();
+    if(!g_clientArgParser->disableIME){
+        g_imeBoard->dropFocus();
+    }
 }
 
 void GUIManager::drawEx(int, int, int, int, int, int) const
@@ -155,7 +165,9 @@ void GUIManager::drawEx(int, int, int, int, int, int) const
 
     const auto [w, h] = g_sdlDevice->getRendererSize();
     Widget::drawEx(0, 0, 0, 0, w, h);
-    g_imeBoard->draw();
+    if(!g_clientArgParser->disableIME){
+        g_imeBoard->draw();
+    }
 }
 
 void GUIManager::update(double fUpdateTime)
@@ -163,7 +175,9 @@ void GUIManager::update(double fUpdateTime)
     Widget::update(fUpdateTime);
     m_controlBoard.update(fUpdateTime);
     m_NPCChatBoard.update(fUpdateTime);
-    g_imeBoard->update(fUpdateTime);
+    if(!g_clientArgParser->disableIME){
+        g_imeBoard->update(fUpdateTime);
+    }
 }
 
 bool GUIManager::processEventDefault(const SDL_Event &event, bool valid)
@@ -192,7 +206,10 @@ bool GUIManager::processEventDefault(const SDL_Event &event, bool valid)
     }
 
     bool tookEvent = false;
-    tookEvent |=    g_imeBoard->processEvent       (event, valid && !tookEvent);
+    if(!g_clientArgParser->disableIME){
+        tookEvent |= g_imeBoard->processEvent(event, valid && !tookEvent);
+    }
+
     tookEvent |=        Widget::processEventDefault(event, valid && !tookEvent);
     tookEvent |= m_controlBoard.processEvent       (event, valid && !tookEvent);
     tookEvent |= m_NPCChatBoard.processEvent       (event, valid && !tookEvent);
@@ -295,7 +312,9 @@ void GUIManager::onWindowResize()
         widgetPtr->moveBy(-moveDX, -moveDY);
     };
 
-    fnSetWidgetPLoc(g_imeBoard);
+    if(!g_clientArgParser->disableIME){
+        fnSetWidgetPLoc(g_imeBoard);
+    }
     fnSetWidgetPLoc(&m_horseBoard);
     fnSetWidgetPLoc(&m_skillBoard);
     fnSetWidgetPLoc(&m_guildBoard);

@@ -78,7 +78,7 @@ bool InputLine::processEventDefault(const SDL_Event &event, bool valid)
                     default:
                         {
                             const char keyChar = SDLDeviceHelper::getKeyChar(event, true);
-                            if(m_imeEnabled && g_imeBoard->active() && (keyChar >= 'a' && keyChar <= 'z')){
+                            if(!g_clientArgParser->disableIME && m_imeEnabled && g_imeBoard->active() && (keyChar >= 'a' && keyChar <= 'z')){
                                 g_imeBoard->gainFocus("", str_printf("%c", keyChar), this, [this](std::string s)
                                 {
                                     m_tpset.insertUTF8String(m_cursor, 0, s.c_str());
@@ -175,7 +175,7 @@ void InputLine::drawEx(int dstX, int dstY, int srcX, int srcY, int srcW, int src
         }
 
         const auto pToken = m_tpset.getToken(m_cursor - 1, 0);
-        return pToken->Box.State.W1 + pToken->Box.State.X + pToken->Box.Info.W;
+        return pToken->box.state.w1 + pToken->box.state.x + pToken->box.info.w;
     }();
 
     int cursorW = m_cursorWidth;

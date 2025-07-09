@@ -6,8 +6,10 @@ ExternalProject_Add(
     GIT_REPOSITORY "https://github.com/ThePhD/sol2.git"
     # GIT_TAG        "develop"
     # GIT_TAG        "v2.20.6"
-    GIT_TAG        "v3.3.0"
-  
+    # GIT_TAG        "v3.3.0"
+    GIT_TAG        "v3.3.1"
+    # GIT_TAG        "v3.5.0"
+
     SOURCE_DIR "${MIR2X_3RD_PARTY_DIR}/sol2"
 
     CONFIGURE_COMMAND ""

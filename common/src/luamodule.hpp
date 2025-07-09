@@ -20,7 +20,7 @@ class LuaModule
         virtual ~LuaModule() = default;
 
     public:
-        sol::state &getLuaState()
+        sol::state &getState()
         {
             return m_luaState;
         }
@@ -39,7 +39,7 @@ class LuaModule
             });
         }
 
-        sol::protected_function_result execString(const char *format, ...)
+        sol::protected_function_result execString(const char *format, ...) STR_PRINTF_CHECK_FORMAT(2)
         {
             std::string s;
             str_format(format, s);

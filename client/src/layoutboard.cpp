@@ -11,11 +11,13 @@
 #include "strf.hpp"
 #include "bevent.hpp"
 #include "xmltypeset.hpp"
+#include "clientargparser.hpp"
 
 extern Log *g_log;
 extern FontexDB *g_fontexDB;
 extern IMEBoard *g_imeBoard;
 extern SDLDevice *g_sdlDevice;
+extern ClientArgParser *g_clientArgParser;
 
 LayoutBoard::LayoutBoard(
         Widget::VarDir argDir,
@@ -201,7 +203,7 @@ void LayoutBoard::loadXML(const char *xmlString, size_t parLimit)
     }
 
     if(rootElem->FirstAttribute()){
-        g_log->addLog(LOGTYPE_WARNING, "Layout XML doesn't accept attributes, ignored.");
+        g_log->addLog(LOGTYPE_WARNING, "Layout XML doesn't accept attributes, ignored");
     }
 
     size_t addedParCount = 0;
@@ -620,7 +622,7 @@ bool LayoutBoard::processEventDefault(const SDL_Event &event, bool valid)
                                 setupStartY(m_cursorLoc.par);
                             };
 
-                            if(m_imeEnabled && g_imeBoard->active() && (keyChar >= 'a' && keyChar <= 'z')){
+                            if(!g_clientArgParser->disableIME && m_imeEnabled && g_imeBoard->active() && (keyChar >= 'a' && keyChar <= 'z')){
                                 g_imeBoard->gainFocus("", str_printf("%c", keyChar), this, [fnInsertString, this](std::string s)
                                 {
                                     fnInsertString(std::move(s));
@@ -747,10 +749,10 @@ void LayoutBoard::drawCursorBlink(int drawDstX, int drawDstY) const
             const auto tokenPtr = par->tpset->getToken(m_cursorLoc.x, m_cursorLoc.y);
             return
             {
-                par->margin[2] + tokenPtr->Box.State.X - tokenPtr->Box.State.W1,
-                par->startY    + tokenPtr->Box.State.Y,
+                par->margin[2] + tokenPtr->box.state.x - tokenPtr->box.state.w1,
+                par->startY    + tokenPtr->box.state.y,
 
-                par->tpset->getToken(std::max<int>(0, m_cursorLoc.x - 1), m_cursorLoc.y)->Box.Info.H,
+                par->tpset->getToken(std::max<int>(0, m_cursorLoc.x - 1), m_cursorLoc.y)->box.info.h,
             };
         }
         else{
@@ -760,10 +762,10 @@ void LayoutBoard::drawCursorBlink(int drawDstX, int drawDstY) const
             const auto tokenPtr = par->tpset->getToken(m_cursorLoc.x - 1, m_cursorLoc.y);
             return
             {
-                par->margin[2] + tokenPtr->Box.State.X + tokenPtr->Box.Info.W + tokenPtr->Box.State.W2 - m_cursorWidth,
-                par->startY    + tokenPtr->Box.State.Y,
+                par->margin[2] + tokenPtr->box.state.x + tokenPtr->box.info.w + tokenPtr->box.state.w2 - m_cursorWidth,
+                par->startY    + tokenPtr->box.state.y,
 
-                tokenPtr->Box.Info.H,
+                tokenPtr->box.info.h,
             };
         }
     }();

@@ -26,7 +26,7 @@ mir2x is an experimental project that verifies actor-model based parallelism for
   - mapeditor
 
 ### Notes
-- This repo uses C++20 coroutine, developer needs a compiler supports c++20 to build.
+- This repo fully uses C++20 coroutine to implement actor model, developer needs a compiler supports c++20 to build.
 - This repo uses classic v1.45 mir2 as a reference implementation, you can try the original game:
   - Install [win-xp](https://github.com/etorth/winxp-zh) to host and run the game server/client, tested on real machine or virtualbox machine.
   - Install server/client from [mir2-v1.45](https://github.com/etorth/CBWCQ3).
@@ -36,7 +36,7 @@ mir2x is an experimental project that verifies actor-model based parallelism for
 - Check the tutorial [here](https://github.com/etorth/mir2x/wiki/Host-your-monoserver-on-Oracle-Cloud) for how to run the ```monoserver``` with Oracle Cloud as a public server.
 - You can try the public test server ```192.9.241.118``` by
   ```shell
-  client --server-ip=192.9.241.118
+  client --server-ip=192.9.241.118 # not maintained recently
   ```
 
 YouTube links: [1](https://youtu.be/Yz-bGOkDyEQ) [2](https://youtu.be/jl1LPxe2EAA) [3](https://youtu.be/TtGONA83Mb8)
@@ -90,14 +90,14 @@ To start the monoserver, find a linux machine to host the monoserver, I tried to
 
 ```sh
 $ cd mir2x/b/install/server
-$ ./monoserver
+$ ./server --auto-launch
 ```
 
 Start client, currently you can use default account (id = test, pwd = 123456) to try it:
 
 ```sh
 $ cd mir2x/b/install/client
-$ ./client
+$ ./client --server-ip=localhost --auto-login=test:123456
 ```
 
 ### Code style

@@ -5,6 +5,7 @@
 #include <optional>
 #include <unordered_map>
 #include "pathf.hpp"
+#include "sgf.hpp"
 #include "scopedalloc.hpp"
 #include "charobject.hpp"
 #include "damagenode.hpp"
@@ -19,6 +20,7 @@ class BattleObject: public CharObject
     public:
         friend class CharObject;
         friend class BaseBuff;
+        friend class BaseBuffAct;
         friend class BaseBuffActAura;
         friend class BaseBuffActTrigger;
         friend class BaseBuffActAttributeModifier;
@@ -77,12 +79,6 @@ class BattleObject: public CharObject
         };
 
     protected:
-        const ServerMap *GetServerMap() const
-        {
-            return m_map;
-        }
-
-    protected:
         SDHealth m_sdHealth;
         SDBuffedAbility m_sdBuffedAbility;
 
@@ -90,8 +86,8 @@ class BattleObject: public CharObject
         BuffList m_buffList;
 
     protected:
-        bool m_moveLock;
-        bool m_attackLock;
+        bool m_moveLock = false;
+        bool m_attackLock = false;
 
     protected:
         int m_lastAction = ACTION_NONE;
@@ -100,31 +96,22 @@ class BattleObject: public CharObject
     protected:
         std::vector<Offender> m_offenderList;
 
+    protected:
+        TimedState<bool> m_dead;
+
     public:
         BattleObject(
-                const ServerMap *,  // server map
-                uint64_t,           // uid
-                int,                // map x
-                int,                // map y
-                int);               // direction
+                uint64_t, // uid
+                uint64_t, // server map uid
+                int,      // map x
+                int,      // map y
+                int);     // direction
 
     public:
         ~BattleObject() = default;
 
     public:
-        virtual bool update() = 0;
-
-    public:
-        void onActivate() override
-        {
-            ServerObject::onActivate();
-            dispatchAction(ActionSpawn
-            {
-                .direction = Direction(),
-                .x = X(),
-                .y = Y(),
-            });
-        }
+        void beforeActivate() override;
 
     protected:
         virtual void reportCO(uint64_t) = 0;
@@ -141,44 +128,36 @@ class BattleObject: public CharObject
         virtual int Speed(int) const;
 
     protected:
-        bool requestJump(
-                int,                                // x
-                int,                                // y
-                int,                                // direction
-                std::function<void()> = nullptr,    // fnOnOK
-                std::function<void()> = nullptr);   // fnOnError
+        corof::awaitable<bool> requestJump(
+                int,            // x
+                int,            // y
+                int);           // direction
 
     protected:
-        bool requestMove(
-                int,                                // x
-                int,                                // y
-                int,                                // speed
-                bool,                               // allowHalfMove
-                bool,                               // removeMonster: force monster on (x, y) go to somewhere else to make room
-                std::function<void()> = nullptr,    // fnOnOK
-                std::function<void()> = nullptr);   // fnOnError
+        corof::awaitable<bool> requestMove(
+                int,            // x
+                int,            // y
+                int,            // speed
+                bool,           // allowHalfMove
+                bool);          // removeMonster: force monster on (x, y) go to somewhere else to make room
 
     protected:
-        bool requestSpaceMove(
-                int,                                // x
-                int,                                // y
-                bool,                               // strictMove
-                std::function<void()> = nullptr,    // fnOnOK
-                std::function<void()> = nullptr);   // fnOnError
+        corof::awaitable<bool> requestSpaceMove(
+                int,            // x
+                int,            // y
+                bool);          // strictMove
 
     protected:
-        bool requestMapSwitch(
-                uint32_t,                           // mapID
-                int,                                // x
-                int,                                // y
-                bool,                               // strictMove
-                std::function<void()> = nullptr,    // fnOnOK
-                std::function<void()> = nullptr);   // fnOnError
+        corof::awaitable<bool> requestMapSwitch(
+                uint64_t,       // mapUID
+                int,            // x
+                int,            // y
+                bool);          // strictMove
 
     protected:
-        virtual bool canAct()    const;
-        virtual bool canMove()   const;
-        virtual bool canAttack() const;
+        virtual bool canAct()        const;
+        virtual bool canMove(bool)   const;
+        virtual bool canAttack(bool) const;
 
     protected:
         void setLastAction(int);
@@ -193,7 +172,7 @@ class BattleObject: public CharObject
         virtual bool struckDamage(uint64_t, const DamageNode &) = 0;
 
     protected:
-        void addMonster(uint32_t, int, int, bool);
+        corof::awaitable<uint64_t> addMonster(uint32_t, int, int, bool);
 
     protected:
         virtual int maxStep() const
@@ -240,11 +219,13 @@ class BattleObject: public CharObject
         std::optional<double> oneStepCost(const BattleObject::BOPathFinder *, int, int, int, int, int, int) const;
 
     protected:
-        virtual void checkFriend(uint64_t, std::function<void(int)>) = 0;
+        virtual corof::awaitable<int> checkFriend(uint64_t) = 0;
 
     protected:
-        void queryHealth(uint64_t, std::function<void(uint64_t, SDHealth)>);
-        void queryFinalMaster(uint64_t, std::function<void(uint64_t)>);
+        corof::awaitable<std::optional<SDHealth>> queryHealth(uint64_t);
+
+    protected:
+        corof::awaitable<uint64_t> queryFinalMaster(uint64_t);
 
     protected:
         bool isOffender(uint64_t);
@@ -273,9 +254,6 @@ class BattleObject: public CharObject
         void dispatchBuffIDList();
 
     protected:
-        virtual void updateBuffList();
-
-    protected:
         virtual bool updateHealth(
                 int = 0,    // hp
                 int = 0,    // mp
@@ -292,4 +270,7 @@ class BattleObject: public CharObject
         {
             return m_sdHealth;
         }
+
+    protected:
+        void notifyDead(uint64_t);
 };

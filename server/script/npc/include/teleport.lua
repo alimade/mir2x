@@ -30,7 +30,9 @@ function tp.uidReqSpaceMove(uid, mapName, x, y, gold, level)
     end
 
     if uidSpaceMove(uid, mapName, x, y) then
-        uidRemoveGold(uid, gold)
+        if gold > 0 then
+            uidRemoveGold(uid, gold)
+        end
     end
 end
 

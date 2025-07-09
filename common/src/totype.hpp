@@ -14,6 +14,8 @@ inline auto to_d    (auto x){ return static_cast<               int>(x); }
 inline auto to_u    (auto x){ return static_cast<      unsigned int>(x); }
 inline auto to_f    (auto x){ return static_cast<             float>(x); }
 inline auto to_df   (auto x){ return static_cast<            double>(x); }
+inline auto to_ld   (auto x){ return static_cast<              long>(x); }
+inline auto to_lu   (auto x){ return static_cast<     unsigned long>(x); }
 inline auto to_lld  (auto x){ return static_cast<         long long>(x); }
 inline auto to_llu  (auto x){ return static_cast<unsigned long long>(x); }
 inline auto to_uz   (auto x){ return static_cast<            size_t>(x); }
@@ -30,11 +32,12 @@ inline auto to_cvptr(auto x){ return static_cast<      const void *>(x); }
 
 template<typename T, typename F> static T check_cast(F from)
 {
-    auto to = static_cast<T>(from);
-    if(static_cast<F>(to) != from){
+    if(const auto to = static_cast<T>(from); static_cast<F>(to) == from){
+        return to;
+    }
+    else{
         throw std::runtime_error("cast fails to preserve original value");
     }
-    return to;
 }
 
 int to_dround(std::floating_point auto x)
@@ -204,11 +207,11 @@ template<typename T> int to_boolint(T t)
 inline bool to_parsedbool(const char *s)
 {
     if(!s){
-        throw std::runtime_error("to_bool: null string");
+        throw std::runtime_error("to_parsedbool: null string");
     }
 
     if(s[0] == '\0'){
-        throw std::runtime_error("to_bool: zero-length string");
+        throw std::runtime_error("to_parsedbool: zero-length string");
     }
 
     if(false
@@ -227,7 +230,7 @@ inline bool to_parsedbool(const char *s)
         return false;
     }
 
-    throw std::runtime_error(std::string("to_bool: invalid boolean string: ") + s);
+    throw std::runtime_error(std::string("to_parsedbool: invalid boolean string: ") + s);
 }
 
 inline bool to_parsedbool(const std::string &s)
